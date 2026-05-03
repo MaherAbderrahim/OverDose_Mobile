@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import 'compare_lists_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -208,6 +209,15 @@ class _QuickActionsCard extends StatelessWidget {
               onPressed: () => onRefresh(),
               icon: const Icon(Icons.sync),
               label: const Text('Synchroniser le profil et les produits'),
+            ),
+            const SizedBox(height: 10),
+            FilledButton.tonalIcon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CompareListsScreen()),
+              ),
+              icon: const Icon(Icons.compare_arrows),
+              label: const Text('Comparer des listes de produits'),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
