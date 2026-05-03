@@ -18,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   DateTime? _dateOfBirth;
-  String _gender = 'other';
+  String _gender = 'male';
   bool _initialized = false;
 
   @override
@@ -39,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _lastNameController.text = user.lastName;
       _emailController.text = user.email;
       _dateOfBirth = user.dateOfBirth;
-      _gender = user.gender.isEmpty ? 'other' : user.gender;
+      _gender = (user.gender == 'female') ? 'female' : 'male';
       _initialized = true;
     }
 
@@ -127,17 +127,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             value: 'female',
                             child: Text('Femme'),
                           ),
-                          DropdownMenuItem(
-                            value: 'other',
-                            child: Text('Autre'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'prefer_not_to_say',
-                            child: Text('Préfère ne pas dire'),
-                          ),
                         ],
                         onChanged: (value) =>
-                            setState(() => _gender = value ?? 'other'),
+                            setState(() => _gender = value ?? 'male'),
                       ),
                       const SizedBox(height: 14),
                       OutlinedButton.icon(
@@ -266,12 +258,12 @@ class _ProfileHeader extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF3ED),
+                color: const Color(0xFFE1F5FE),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(
                 Icons.person_outline,
-                color: Color(0xFF12372A),
+                color: Color(0xFF00D2FF),
                 size: 32,
               ),
             ),

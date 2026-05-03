@@ -113,7 +113,7 @@ class _HeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
         gradient: const LinearGradient(
-          colors: [Color(0xFF12372A), Color(0xFF1F5C47), Color(0xFF2D7A5D)],
+          colors: [Color(0xFF00D2FF), Color(0xFF3AD2FF), Color(0xAD00D3FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -140,7 +140,7 @@ class _HeaderCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFFE9F5EE), height: 1.4),
+            style: const TextStyle(color: Color(0xFFE1F5FE), height: 1.4),
           ),
         ],
       ),
@@ -167,7 +167,7 @@ class _MetricCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFF12372A)),
+            Icon(icon, color: const Color(0xFF00D2FF).withOpacity(0.8)),
             const SizedBox(height: 14),
             Text(
               value,
@@ -248,14 +248,14 @@ class _ProductPreview extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF3ED),
+                color: const Color(0xFFE1F5FE),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 product.category == ProductCategory.food
                     ? Icons.restaurant
                     : Icons.palette,
-                color: const Color(0xFF12372A),
+                color: const Color(0xFF00D2FF),
               ),
             ),
             const SizedBox(width: 14),

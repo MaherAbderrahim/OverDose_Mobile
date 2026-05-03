@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 ThemeData buildAppTheme(Brightness brightness) {
-  const seed = Color(0xFF12372A);
+  final seed = const Color(0xFF00D2FF).withOpacity(0.678);
   final colorScheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
-    surface: const Color(0xFFF8F5ED),
+    surface: const Color(0xFFF0F9FF),
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: colorScheme);
 
   return base.copyWith(
-    scaffoldBackgroundColor: const Color(0xFFF5F1E8),
+    scaffoldBackgroundColor: const Color(0xFFF0F7FA),
     textTheme: GoogleFonts.spaceGroteskTextTheme(base.textTheme),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -39,11 +39,11 @@ ThemeData buildAppTheme(Brightness brightness) {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFE6E1D8)),
+        borderSide: const BorderSide(color: Color(0xFFE1F5FE)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFF12372A), width: 1.2),
+        borderSide: BorderSide(color: seed.withOpacity(1), width: 1.2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),

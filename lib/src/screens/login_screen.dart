@@ -20,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _loginEmailController = TextEditingController();
   final _loginPasswordController = TextEditingController();
   DateTime? _dateOfBirth;
-  String _gender = 'other';
+  String _gender = 'male';
   bool _showRegister = false;
 
   @override
@@ -37,43 +37,39 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF12372A), Color(0xFFF5F1E8), Color(0xFFE8F4EF)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xAD00D3FF), Color(0xFFF5F1E8), Color(0xFFE0F7FA)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 24),
-                    _HeroCard(
-                      showRegister: _showRegister,
-                      onToggle: () =>
-                          setState(() => _showRegister = !_showRegister),
-                    ),
-                    const SizedBox(height: 20),
-                    if (controller.errorMessage != null)
-                      _ErrorBanner(message: controller.errorMessage!),
-                    const SizedBox(height: 20),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      child: _showRegister
-                          ? _buildRegisterForm(context)
-                          : _buildLoginForm(context),
-                    ),
-                  ],
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                // _HeroCard(
+                //   showRegister: _showRegister,
+                //   onToggle: () =>
+                //       setState(() => _showRegister = !_showRegister),
+                // ),
+                const SizedBox(height: 20),
+                if (controller.errorMessage != null)
+                  _ErrorBanner(message: controller.errorMessage!),
+                const SizedBox(height: 20),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: _showRegister
+                      ? _buildRegisterForm(context)
+                      : _buildLoginForm(context),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -213,11 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 items: const [
                   DropdownMenuItem(value: 'male', child: Text('Homme')),
                   DropdownMenuItem(value: 'female', child: Text('Femme')),
-                  DropdownMenuItem(value: 'other', child: Text('Autre')),
-                  DropdownMenuItem(
-                    value: 'prefer_not_to_say',
-                    child: Text('Préfère ne pas dire'),
-                  ),
                 ],
                 onChanged: (value) =>
                     setState(() => _gender = value ?? 'other'),
@@ -311,7 +302,7 @@ class _HeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
         gradient: const LinearGradient(
-          colors: [Color(0xFF12372A), Color(0xFF1E5B46), Color(0xFF2D7A5D)],
+          colors: [Color(0xFF00D2FF), Color(0xFF3AD2FF), Color(0xAD00D3FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -349,8 +340,8 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Connexion locale au backend Django avec base URL configurable pour le futur ngrok.',
-            style: TextStyle(color: Color(0xFFE9F5EE), height: 1.4),
+            'Connexion locale au backend Django avec base URL configurable.',
+            style: TextStyle(color: Color(0xFFE1F5FE), height: 1.4),
           ),
           const SizedBox(height: 18),
           TextButton.icon(

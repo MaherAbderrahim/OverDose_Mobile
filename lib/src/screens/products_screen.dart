@@ -119,12 +119,12 @@ class _SummaryCard extends StatelessWidget {
               width: 58,
               height: 58,
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF3ED),
+                color: const Color(0xFFE1F5FE),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: const Icon(
                 Icons.inventory_2_outlined,
-                color: Color(0xFF12372A),
+                color: Color(0xFF00D2FF),
               ),
             ),
             const SizedBox(width: 14),
@@ -169,14 +169,14 @@ class _ProductCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3EFE5),
+                    color: const Color(0xFFE1F5FE),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     product.category == ProductCategory.food
                         ? Icons.restaurant
                         : Icons.palette,
-                    color: const Color(0xFF12372A),
+                    color: const Color(0xFF00D2FF),
                   ),
                 ),
                 const SizedBox(width: 12),

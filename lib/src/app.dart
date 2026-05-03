@@ -35,11 +35,8 @@ class AppGate extends StatelessWidget {
       return const _BootScreen();
     }
 
-    if (controller.isAuthenticated) {
-      return const AppShell();
-    }
-
-    return const LoginScreen();
+    // Always show AppShell so navigation is available even without login
+    return const AppShell();
   }
 }
 
