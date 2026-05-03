@@ -6,8 +6,8 @@ import 'app_shell.dart';
 import 'screens/login_screen.dart';
 import 'theme.dart';
 
-class NutriScanApp extends StatelessWidget {
-  const NutriScanApp({super.key});
+class OverDoseApp extends StatelessWidget {
+  const OverDoseApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class NutriScanApp extends StatelessWidget {
       create: (_) => AppController()..bootstrap(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'NutriScan',
+        title: 'OverDose',
         themeMode: ThemeMode.light,
         theme: buildAppTheme(Brightness.light),
         home: const AppGate(),
@@ -73,7 +73,7 @@ class _BootScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'NutriScan',
+                'OverDose',
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,

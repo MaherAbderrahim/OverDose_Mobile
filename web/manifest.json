@@ -1,11 +1,11 @@
 {
-    "name": "app_mobile",
-    "short_name": "app_mobile",
+    "name": "OverDose",
+    "short_name": "OverDose",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "OverDose Flutter application.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

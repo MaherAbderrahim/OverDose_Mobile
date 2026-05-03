@@ -44,7 +44,7 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NutriScan'),
+        title: const Text('OverDose'),
         backgroundColor: const Color(0xFFF0F7FA),
       ),
       drawer: Drawer(
@@ -160,7 +160,10 @@ class _AppShellState extends State<AppShell> {
 
   Widget _buildDrawerItem(int index, IconData icon, String title) {
     return ListTile(
-      leading: Icon(icon, color: _index == index ? const Color(0xFF00D2FF) : null),
+      leading: Icon(
+        icon,
+        color: _index == index ? const Color(0xFF00D2FF) : null,
+      ),
       title: Text(
         title,
         style: TextStyle(

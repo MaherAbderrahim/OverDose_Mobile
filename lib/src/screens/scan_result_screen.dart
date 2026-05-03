@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../app_controller.dart';
 
 class ScanResultScreen extends StatelessWidget {
   final List<Map<String, dynamic>>? results;
@@ -9,7 +12,9 @@ class ScanResultScreen extends StatelessWidget {
   const ScanResultScreen({super.key, this.results});
 
   Future<Map<String, dynamic>> _loadDashboardData() async {
-    final String response = await rootBundle.loadString('Assets/Data/Input_Dash.json');
+    final String response = await rootBundle.loadString(
+      'Assets/Data/Input_Dash.json',
+    );
     return json.decode(response);
   }
 
@@ -66,10 +71,12 @@ class ScanResultScreen extends StatelessWidget {
               itemCount: products.length,
               itemBuilder: (context, index) {
                 final product = products[index];
-                final productScores = (scoringAnalysis['product_risk_results'] as List?)?.firstWhere(
-                  (p) => p['product_id'] == product['product_id'],
-                  orElse: () => null,
-                );
+                final productScores =
+                    (scoringAnalysis['product_risk_results'] as List?)
+                        ?.firstWhere(
+                          (p) => p['product_id'] == product['product_id'],
+                          orElse: () => null,
+                        );
                 return _ProductCard(
                   product: product,
                   ingredients: productScores?['ingredient_scores'] ?? [],
@@ -92,7 +99,10 @@ class ScanResultScreen extends StatelessWidget {
 
             // SECTION 6: PRODUCT TO CHANGE
             if (highestRiskProduct != null)
-              _buildHighestRiskCard(highestRiskProduct, scoringAnalysis['product_risk_results']),
+              _buildHighestRiskCard(
+                highestRiskProduct,
+                scoringAnalysis['product_risk_results'],
+              ),
 
             const SizedBox(height: 40),
           ],
@@ -156,8 +166,12 @@ class ScanResultScreen extends StatelessWidget {
   }
 
   Widget _buildCombinationRiskCard(Map<String, dynamic> combinationRisks) {
-    final overlapMsg = combinationRisks['organ_overlap_summary'] ?? "No organ overlap detected";
-    final bool hasOverlap = overlapMsg.toLowerCase().contains("detected") && !overlapMsg.toLowerCase().contains("no");
+    final overlapMsg =
+        combinationRisks['organ_overlap_summary'] ??
+        "No organ overlap detected";
+    final bool hasOverlap =
+        overlapMsg.toLowerCase().contains("detected") &&
+        !overlapMsg.toLowerCase().contains("no");
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -207,7 +221,10 @@ class ScanResultScreen extends StatelessWidget {
     for (var chem in unverified) {
       counts[chem.toString()] = (counts[chem.toString()] ?? 0) + 1;
     }
-    final repeated = counts.entries.where((e) => e.value > 1).map((e) => e.key).toList();
+    final repeated = counts.entries
+        .where((e) => e.value > 1)
+        .map((e) => e.key)
+        .toList();
     final bool hasRepeated = repeated.isNotEmpty;
 
     return Card(
@@ -228,8 +245,8 @@ class ScanResultScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               hasRepeated
-                ? 'Repeated exposure detected across products'
-                : 'No repeated chemicals detected',
+                  ? 'Repeated exposure detected across products'
+                  : 'No repeated chemicals detected',
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 16,
                 color: Colors.black87,
@@ -285,7 +302,9 @@ class ScanResultScreen extends StatelessWidget {
           ),
         ),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           elevation: 2,
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -295,14 +314,21 @@ class ScanResultScreen extends StatelessWidget {
                 final chem = entry.value;
                 final p = chem['personalisation'];
                 final kb = p['kb_entry'] ?? {};
-                final riskLevel = p['risk_level'] ?? chem['risk_level'] ?? 'UNKNOWN';
-                final disease = p['disease_name'] ?? kb['Disease Name'] ?? 'N/A';
+                final riskLevel =
+                    p['risk_level'] ?? chem['risk_level'] ?? 'UNKNOWN';
+                final disease =
+                    p['disease_name'] ?? kb['Disease Name'] ?? 'N/A';
                 final analysis = p['llm_analysis'] ?? 'No analysis available.';
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (index > 0) const Divider(height: 40, thickness: 1.5, color: Colors.black12),
+                    if (index > 0)
+                      const Divider(
+                        height: 40,
+                        thickness: 1.5,
+                        color: Colors.black12,
+                      ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -322,7 +348,11 @@ class ScanResultScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        const Icon(Icons.medical_information_outlined, size: 20, color: Colors.red),
+                        const Icon(
+                          Icons.medical_information_outlined,
+                          size: 20,
+                          color: Colors.red,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -384,7 +414,10 @@ class ScanResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHighestRiskCard(Map<String, dynamic> highest, List? allProducts) {
+  Widget _buildHighestRiskCard(
+    Map<String, dynamic> highest,
+    List? allProducts,
+  ) {
     final String productName = highest['product_name'] ?? 'Unknown';
     final String level = highest['verdict'] ?? 'UNKNOWN';
     final double score = (highest['score'] as num?)?.toDouble() ?? 0.0;
@@ -396,11 +429,17 @@ class ScanResultScreen extends StatelessWidget {
         (p) => p['product_id'] == highest['product_id'],
         orElse: () => null,
       );
-      if (productDetails != null && productDetails['ingredient_scores'] != null) {
+      if (productDetails != null &&
+          productDetails['ingredient_scores'] != null) {
         final List ingredients = productDetails['ingredient_scores'];
         if (ingredients.isNotEmpty) {
           // Sort by score descending to find the main driver
-          final sorted = List.from(ingredients)..sort((a, b) => (b['weighted_score'] as num).compareTo(a['weighted_score'] as num));
+          final sorted = List.from(ingredients)
+            ..sort(
+              (a, b) => (b['weighted_score'] as num).compareTo(
+                a['weighted_score'] as num,
+              ),
+            );
           driver = sorted.first['name'];
         }
       }
@@ -663,19 +702,34 @@ class _IngredientTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String name = ingredient['name'] ?? 'Unknown';
-    final String level = (ingredient['danger_level'] ?? 'UNKNOWN').toString().toUpperCase();
+    final String level = (ingredient['danger_level'] ?? 'UNKNOWN')
+        .toString()
+        .toUpperCase();
 
     // Determine Type
     String type = "Unverified";
     final List justification = ingredient['justification'] ?? [];
-    bool isPersonalized = justification.any((j) => j.toString().toLowerCase().contains('personalisation') || j.toString().toLowerCase().contains('profile'));
-    bool isKG = justification.any((j) => j.toString().toLowerCase().contains('knowledge graph'));
+    bool isPersonalized = justification.any(
+      (j) =>
+          j.toString().toLowerCase().contains('personalisation') ||
+          j.toString().toLowerCase().contains('profile'),
+    );
+    bool isKG = justification.any(
+      (j) => j.toString().toLowerCase().contains('knowledge graph'),
+    );
 
-    if (isPersonalized) type = "Personalized";
-    else if (isKG && !justification.any((j) => j.toString().toLowerCase().contains('not found'))) type = "KG verified";
+    if (isPersonalized)
+      type = "Personalized";
+    else if (isKG &&
+        !justification.any(
+          (j) => j.toString().toLowerCase().contains('not found'),
+        ))
+      type = "KG verified";
 
     // Reason
-    String reason = justification.isNotEmpty ? justification.first.toString() : "No reason provided";
+    String reason = justification.isNotEmpty
+        ? justification.first.toString()
+        : "No reason provided";
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -700,19 +754,29 @@ class _IngredientTile extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     _RiskBadge(level: level, small: true),
                   ],
                 ),
                 Text(
                   'Type: $type',
-                  style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.indigo, fontWeight: FontWeight.w500),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    color: Colors.indigo,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   reason,
-                  style: GoogleFonts.spaceGrotesk(fontSize: 11, color: Colors.grey[600]),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
