@@ -17,15 +17,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _newAllergyController = TextEditingController();
+
   DateTime? _dateOfBirth;
   String _gender = 'male';
-  bool _initialized = false;
+  int? _initializedUserId;
+  final Set<int> _selectedAllergyIds = <int>{};
 
   @override
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
+    _notesController.dispose();
+    _newAllergyController.dispose();
     super.dispose();
   }
 
@@ -34,13 +40,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final controller = context.watch<AppController>();
     final user = controller.currentUser;
 
-    if (user != null && !_initialized) {
+    if (user != null && _initializedUserId != user.id) {
       _firstNameController.text = user.firstName;
       _lastNameController.text = user.lastName;
       _emailController.text = user.email;
+      _notesController.text = user.notes;
       _dateOfBirth = user.dateOfBirth;
-      _gender = (user.gender == 'female') ? 'female' : 'male';
-      _initialized = true;
+      _gender = user.gender.isEmpty ? 'male' : user.gender;
+      _selectedAllergyIds
+        ..clear()
+        ..addAll(controller.selectedAllergyIds);
+      _initializedUserId = user.id;
     }
 
     return CustomScrollView(
@@ -127,6 +137,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             value: 'female',
                             child: Text('Femme'),
                           ),
+                          DropdownMenuItem(
+                            value: 'other',
+                            child: Text('Autre'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'prefer_not_to_say',
+                            child: Text('Ne pas préciser'),
+                          ),
                         ],
                         onChanged: (value) =>
                             setState(() => _gender = value ?? 'male'),
@@ -139,22 +157,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _dateOfBirth == null
                               ? 'Date de naissance'
                               : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton(
-                        onPressed: controller.isBusy ? null : _save,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: controller.isBusy
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              : const Text('Enregistrer'),
                         ),
                       ),
                     ],
@@ -175,27 +177,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Allergies et préférences',
+                      'Allergies',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Cette partie pourra être reliée au module user-allergies plus tard.',
+                    const SizedBox(height: 8),
+                    Text(
+                      controller.allergies.isEmpty
+                          ? 'Aucune allergie enregistrée pour le moment.'
+                          : 'Sélectionne toutes les allergies qui te concernent.',
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: const [
-                        Chip(label: Text('Sans gluten')),
-                        Chip(label: Text('Sans lactose')),
-                        Chip(label: Text('Peau sensible')),
+                    const SizedBox(height: 14),
+                    if (controller.allergies.isEmpty)
+                      const Chip(label: Text('Liste vide'))
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: controller.allergies
+                            .map(
+                              (allergy) => FilterChip(
+                                label: Text(allergy.name),
+                                selected: _selectedAllergyIds.contains(
+                                  allergy.id,
+                                ),
+                                onSelected: controller.isBusy
+                                    ? null
+                                    : (selected) => setState(() {
+                                        if (selected) {
+                                          _selectedAllergyIds.add(allergy.id);
+                                        } else {
+                                          _selectedAllergyIds.remove(
+                                            allergy.id,
+                                          );
+                                        }
+                                      }),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _newAllergyController,
+                            textInputAction: TextInputAction.done,
+                            decoration: const InputDecoration(
+                              labelText: 'Ajouter une allergie',
+                              hintText: 'Ex. arachide, soja, kiwi',
+                            ),
+                            onSubmitted: (_) => _addAllergy(context),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton(
+                          onPressed: controller.isBusy
+                              ? null
+                              : () => _addAllergy(context),
+                          child: const Text('Ajouter'),
+                        ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _notesController,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Autres informations',
+                        hintText:
+                            'Ex. je suis sensible aux parfums forts, je suis végétarien...',
+                      ),
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverToBoxAdapter(
+            child: FilledButton(
+              onPressed: controller.isBusy ? null : _save,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: controller.isBusy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                      )
+                    : const Text('Enregistrer'),
               ),
             ),
           ),
@@ -219,6 +295,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _addAllergy(BuildContext context) async {
+    final controller = context.read<AppController>();
+    final rawName = _newAllergyController.text.trim();
+    if (rawName.isEmpty) {
+      return;
+    }
+
+    try {
+      final allergy = await controller.createAllergy(rawName);
+      if (!context.mounted) {
+        return;
+      }
+      setState(() {
+        _selectedAllergyIds.add(allergy.id);
+        _newAllergyController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Allergie ajoutée : ${allergy.name}'),
+          backgroundColor: const Color(0xFF12372A),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible d\'ajouter l\'allergie : $error'),
+          backgroundColor: const Color(0xFFB53F2F),
+        ),
+      );
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -230,13 +341,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    await controller.saveProfile(
-      current.copyWith(
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        email: _emailController.text.trim(),
-        gender: _gender,
-        dateOfBirth: _dateOfBirth,
+    final updatedUser = current.copyWith(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
+      gender: _gender,
+      dateOfBirth: _dateOfBirth,
+      notes: _notesController.text.trim(),
+    );
+
+    await controller.saveProfilePreferences(
+      updatedUser: updatedUser,
+      allergyIds: _selectedAllergyIds.toList(),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profil et allergies enregistrés.'),
+        backgroundColor: Color(0xFF12372A),
       ),
     );
   }

@@ -542,6 +542,35 @@ class _KPICard extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _saveResult(
+    BuildContext context,
+    Map<String, dynamic> result,
+  ) async {
+    final controller = context.read<AppController>();
+    try {
+      await controller.saveAnalyzedProduct(result);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produit enregistré dans Mes produits.'),
+          backgroundColor: Color(0xFF12372A),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible d\'enregistrer le produit : $error'),
+          backgroundColor: const Color(0xFFB53F2F),
+        ),
+      );
+    }
+  }
 }
 
 class _ProductCard extends StatelessWidget {

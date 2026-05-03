@@ -106,9 +106,7 @@ class _ScanScreenState extends State<ScanScreen> {
     List<dynamic>? result;
     try {
       result = await Navigator.of(context).push<List<dynamic>>(
-        MaterialPageRoute(
-          builder: (_) => SegmentationScreen(imageFile: image),
-        ),
+        MaterialPageRoute(builder: (_) => SegmentationScreen(imageFile: image)),
       );
     } catch (e) {
       if (mounted) {
@@ -146,11 +144,9 @@ class _ScanScreenState extends State<ScanScreen> {
           builder: (_) => ScanResultScreen(
             results: [
               {
+                ...(response.analysis ?? <String, dynamic>{}),
                 'product_id': response.scanId.toString(),
-                'name': 'Scan rapide',
                 'ingredients': response.ingredients,
-                'brand': '',
-                'category': 'scan',
               },
             ],
           ),
