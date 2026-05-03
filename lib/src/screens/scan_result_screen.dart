@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../app_controller.dart';
 
 class ScanResultScreen extends StatelessWidget {
   const ScanResultScreen({super.key, required this.results});
@@ -96,6 +99,35 @@ class ScanResultScreen extends StatelessWidget {
                                   )
                                   .toList(),
                       ),
+                      const SizedBox(height: 14),
+                      if (ingredients.isNotEmpty)
+                        Builder(
+                          builder: (context) {
+                            final controller = context.watch<AppController>();
+                            return FilledButton.icon(
+                              onPressed: controller.isBusy
+                                  ? null
+                                  : () => _saveResult(context, result),
+                              icon: controller.isBusy
+                                  ? const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.bookmark_add_outlined),
+                              label: const Text(
+                                'Enregistrer dans Mes produits',
+                              ),
+                            );
+                          },
+                        )
+                      else
+                        const Text(
+                          'Sauvegarde impossible tant que des ingrédients n\'ont pas été extraits.',
+                          style: TextStyle(color: Color(0xFF7A4B00)),
+                        ),
                     ],
                   ),
                 ),
@@ -105,5 +137,34 @@ class ScanResultScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _saveResult(
+    BuildContext context,
+    Map<String, dynamic> result,
+  ) async {
+    final controller = context.read<AppController>();
+    try {
+      await controller.saveAnalyzedProduct(result);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produit enregistré dans Mes produits.'),
+          backgroundColor: Color(0xFF12372A),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible d\'enregistrer le produit : $error'),
+          backgroundColor: const Color(0xFFB53F2F),
+        ),
+      );
+    }
   }
 }

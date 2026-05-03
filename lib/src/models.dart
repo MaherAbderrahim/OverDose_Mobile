@@ -28,6 +28,7 @@ class AppUser {
     required this.email,
     required this.gender,
     required this.dateOfBirth,
+    required this.notes,
     this.createdAt,
     this.updatedAt,
   });
@@ -38,6 +39,7 @@ class AppUser {
   final String email;
   final String gender;
   final DateTime? dateOfBirth;
+  final String notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -55,6 +57,7 @@ class AppUser {
     String? email,
     String? gender,
     DateTime? dateOfBirth,
+    String? notes,
   }) {
     return AppUser(
       id: id,
@@ -63,6 +66,7 @@ class AppUser {
       email: email ?? this.email,
       gender: gender ?? this.gender,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      notes: notes ?? this.notes,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -76,6 +80,7 @@ class AppUser {
       email: (json['email'] ?? '') as String,
       gender: (json['gender'] ?? '') as String,
       dateOfBirth: _tryParseDate(json['date_of_birth']?.toString()),
+      notes: (json['notes'] ?? '') as String,
       createdAt: _tryParseDate(json['created_at']?.toString()),
       updatedAt: _tryParseDate(json['updated_at']?.toString()),
     );
@@ -87,7 +92,23 @@ class AppUser {
     'email': email,
     'gender': gender,
     'date_of_birth': dateOfBirth?.toIso8601String().split('T').first,
+    'notes': notes,
   };
+}
+
+@immutable
+class AllergyItem {
+  const AllergyItem({required this.id, required this.name});
+
+  final int id;
+  final String name;
+
+  factory AllergyItem.fromJson(Map<String, dynamic> json) {
+    return AllergyItem(
+      id: json['id'] as int,
+      name: (json['name'] ?? '') as String,
+    );
+  }
 }
 
 @immutable
@@ -237,10 +258,15 @@ class AnalyzedProduct {
 
 @immutable
 class QuickScanResponse {
-  const QuickScanResponse({required this.scanId, required this.ingredients});
+  const QuickScanResponse({
+    required this.scanId,
+    required this.ingredients,
+    this.analysis,
+  });
 
   final int scanId;
   final List<String> ingredients;
+  final Map<String, dynamic>? analysis;
 
   factory QuickScanResponse.fromJson(Map<String, dynamic> json) {
     return QuickScanResponse(
@@ -248,6 +274,9 @@ class QuickScanResponse {
       ingredients: (json['ingredients'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
+      analysis: json['analysis'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(json['analysis'] as Map)
+          : null,
     );
   }
 }

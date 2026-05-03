@@ -62,9 +62,53 @@ class ApiClient {
     return AppUser.fromJson(response);
   }
 
+  Future<List<AllergyItem>> fetchAllergies(String token) async {
+    final response = await _getJson('/api/users/allergies/', token: token);
+    final dynamic rawItems =
+        response['results'] ?? response['items'] ?? response;
+    final items = rawItems is List ? rawItems : const <dynamic>[];
+    return items
+        .map(
+          (item) =>
+              AllergyItem.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
+  Future<List<int>> fetchCurrentUserAllergyIds(String token) async {
+    final response = await _getJson('/api/users/me/allergies/', token: token);
+    return (response['selected_ids'] as List<dynamic>? ?? const [])
+        .map((item) => (item as num).toInt())
+        .toList();
+  }
+
+  Future<void> updateCurrentUserAllergies({
+    required String token,
+    required List<int> allergyIds,
+  }) async {
+    await _patchJson(
+      '/api/users/me/allergies/',
+      token: token,
+      body: {'allergy_ids': allergyIds},
+    );
+  }
+
+  Future<AllergyItem> createAllergy({
+    required String token,
+    required String name,
+  }) async {
+    final response = await _postJson(
+      '/api/users/allergies/',
+      token: token,
+      body: {'name': name},
+    );
+    return AllergyItem.fromJson(response);
+  }
+
   Future<List<ProductItem>> fetchProducts(String token) async {
     final response = await _getJson('/api/products/', token: token);
-    final items = response as List<dynamic>;
+    final dynamic rawItems = response['results'] ?? response['items'];
+    final items = rawItems is List ? rawItems : const <dynamic>[];
     return items
         .map(
           (item) =>
@@ -95,6 +139,50 @@ class ApiClient {
       },
     );
     return ProductItem.fromJson(response);
+  }
+
+  Future<ProductItem> saveAnalyzedProduct({
+    required String token,
+    required Map<String, dynamic> source,
+  }) async {
+    final analysis = source['analysis'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(source['analysis'] as Map)
+        : <String, dynamic>{};
+    final ingredients = (source['ingredients'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+    final rawCategory = (analysis['category'] ?? source['category'] ?? '')
+        .toString()
+        .toLowerCase();
+    final category = switch (rawCategory) {
+      'food' => ProductCategory.food,
+      'cosmetic' => ProductCategory.cosmetic,
+      _ => ProductCategory.unknown,
+    };
+    final name = (analysis['name'] ?? source['name'] ?? 'Produit analysé')
+        .toString();
+    final brand = (analysis['brand'] ?? source['brand'] ?? '').toString();
+    final barcode = (analysis['barcode'] ?? source['barcode'] ?? '').toString();
+    final extractionMethod =
+        (analysis['source'] ?? source['extraction_method'] ?? 'unknown')
+            .toString()
+            .toLowerCase();
+    final normalizedExtractionMethod = switch (extractionMethod) {
+      'lens' => 'lens',
+      'barcode' => 'barcode',
+      _ => 'unknown',
+    };
+
+    return createProduct(
+      token: token,
+      name: name,
+      brand: brand,
+      category: category,
+      ingredients: ingredients,
+      barcode: barcode,
+      extractionMethod: normalizedExtractionMethod,
+    );
   }
 
   /// Segmentation — utilise [XFile] pour la compatibilité Web + mobile.

@@ -18,6 +18,8 @@ class AppController extends ChangeNotifier {
   String? errorMessage;
   String? token;
   AppUser? currentUser;
+  List<AllergyItem> allergies = const [];
+  List<int> selectedAllergyIds = const [];
   List<ProductItem> products = const [];
 
   bool get isAuthenticated => token != null && token!.isNotEmpty;
@@ -46,6 +48,7 @@ class AppController extends ChangeNotifier {
       token = session.token;
       currentUser = session.user;
       await _authStore.writeToken(session.token);
+      await _loadProfileExtras();
       await refreshProducts(silent: true);
     });
   }
@@ -60,12 +63,17 @@ class AppController extends ChangeNotifier {
   }) async {
     await _runBusy(() async {
       final session = await _apiClient.register(
-        firstName: firstName, lastName: lastName, email: email,
-        password: password, gender: gender, dateOfBirth: dateOfBirth,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
       );
       token = session.token;
       currentUser = session.user;
       await _authStore.writeToken(session.token);
+      await _loadProfileExtras();
       await refreshProducts(silent: true);
     });
   }
@@ -74,6 +82,7 @@ class AppController extends ChangeNotifier {
     if (!isAuthenticated) return;
     await _runBusy(() async {
       currentUser = await _apiClient.fetchProfile(token!);
+      await _loadProfileExtras();
       await refreshProducts(silent: true);
     });
   }
@@ -81,7 +90,43 @@ class AppController extends ChangeNotifier {
   Future<void> saveProfile(AppUser updatedUser) async {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     await _runBusy(() async {
-      currentUser = await _apiClient.updateProfile(token: token!, user: updatedUser);
+      currentUser = await _apiClient.updateProfile(
+        token: token!,
+        user: updatedUser,
+      );
+      await _loadProfileExtras();
+    });
+  }
+
+  Future<void> saveProfilePreferences({
+    required AppUser updatedUser,
+    required List<int> allergyIds,
+  }) async {
+    if (!isAuthenticated) throw StateError('User is not authenticated');
+    await _runBusy(() async {
+      currentUser = await _apiClient.updateProfile(
+        token: token!,
+        user: updatedUser,
+      );
+      await _apiClient.updateCurrentUserAllergies(
+        token: token!,
+        allergyIds: allergyIds,
+      );
+      await _loadProfileExtras();
+    });
+  }
+
+  Future<AllergyItem> createAllergy(String name) async {
+    if (!isAuthenticated) throw StateError('User is not authenticated');
+    return _runBusyResult(() async {
+      final allergy = await _apiClient.createAllergy(token: token!, name: name);
+      allergies = [...allergies, allergy]
+        ..sort(
+          (left, right) =>
+              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+        );
+      notifyListeners();
+      return allergy;
     });
   }
 
@@ -91,29 +136,55 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (!silent) { isBusy = true; notifyListeners(); }
+    if (!silent) {
+      isBusy = true;
+      notifyListeners();
+    }
     try {
       products = await _apiClient.fetchProducts(token!);
       errorMessage = null;
     } catch (error) {
       errorMessage = error.toString();
     } finally {
-      if (!silent) { isBusy = false; notifyListeners(); }
+      if (!silent) {
+        isBusy = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> createProduct({
-    required String name, required String brand,
-    required ProductCategory category, required List<String> ingredients,
-    required String barcode, required String extractionMethod,
+    required String name,
+    required String brand,
+    required ProductCategory category,
+    required List<String> ingredients,
+    required String barcode,
+    required String extractionMethod,
   }) async {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     await _runBusy(() async {
       await _apiClient.createProduct(
-        token: token!, name: name, brand: brand, category: category,
-        ingredients: ingredients, barcode: barcode, extractionMethod: extractionMethod,
+        token: token!,
+        name: name,
+        brand: brand,
+        category: category,
+        ingredients: ingredients,
+        barcode: barcode,
+        extractionMethod: extractionMethod,
       );
       await refreshProducts(silent: true);
+    });
+  }
+
+  Future<ProductItem> saveAnalyzedProduct(Map<String, dynamic> source) async {
+    if (!isAuthenticated) throw StateError('User is not authenticated');
+    return _runBusyResult(() async {
+      final product = await _apiClient.saveAnalyzedProduct(
+        token: token!,
+        source: source,
+      );
+      await refreshProducts(silent: true);
+      return product;
     });
   }
 
@@ -124,16 +195,28 @@ class AppController extends ChangeNotifier {
   }
 
   Future<List<AnalyzedProduct>> analyzeSelected({
-    required String sessionId, required List<String> productIds,
+    required String sessionId,
+    required List<String> productIds,
   }) {
     if (!isAuthenticated) throw StateError('User is not authenticated');
-    return _apiClient.analyzeSelected(token: token!, sessionId: sessionId, productIds: productIds);
+    return _apiClient.analyzeSelected(
+      token: token!,
+      sessionId: sessionId,
+      productIds: productIds,
+    );
   }
 
   /// Scan rapide — accepte un [XFile] (compatible Web et mobile).
   Future<QuickScanResponse> quickScanImage(XFile imageFile) {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     return _apiClient.quickScanImage(token: token!, image: imageFile);
+  }
+
+  Future<void> refreshAllergies() async {
+    if (!isAuthenticated) return;
+    await _runBusy(() async {
+      await _loadProfileExtras();
+    });
   }
 
   Future<void> logout({bool quiet = false}) async {
@@ -172,5 +255,33 @@ class AppController extends ChangeNotifier {
       isBusy = false;
       notifyListeners();
     }
+  }
+
+  Future<T> _runBusyResult<T>(Future<T> Function() action) async {
+    isBusy = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      return await action();
+    } on ApiException catch (error) {
+      errorMessage = error.message;
+      rethrow;
+    } catch (error) {
+      errorMessage = error.toString();
+      rethrow;
+    } finally {
+      isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadProfileExtras() async {
+    if (!isAuthenticated) return;
+    final fetchedAllergies = await _apiClient.fetchAllergies(token!);
+    final fetchedSelectedIds = await _apiClient.fetchCurrentUserAllergyIds(
+      token!,
+    );
+    allergies = fetchedAllergies;
+    selectedAllergyIds = fetchedSelectedIds;
   }
 }

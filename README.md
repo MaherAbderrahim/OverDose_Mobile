@@ -11,7 +11,9 @@ Le but de l’application est de permettre à l’utilisateur de :
 - lancer une segmentation quand plusieurs produits apparaissent sur la photo,
 - sélectionner un ou plusieurs produits détectés,
 - envoyer ces produits au backend Django pour l’analyse,
-- afficher uniquement les ingrédients détectés dans l’écran de test.
+- afficher les ingrédients détectés dans l’écran de test,
+- enregistrer un produit analysé dans la base si l’utilisateur le souhaite,
+- personnaliser le profil avec des allergies et des informations libres.
 
 La logique de risque et de recommandation n’est pas encore intégrée dans l’app mobile. Elle reste côté backend pour une phase ultérieure.
 
@@ -57,6 +59,10 @@ Endpoints utilisés :
 - `POST /api/users/auth/login/`
 - `GET /api/users/me/`
 - `PATCH /api/users/me/`
+- `GET /api/users/allergies/`
+- `GET /api/users/me/allergies/`
+- `PATCH /api/users/me/allergies/`
+- `POST /api/users/allergies/`
 - `GET /api/products/`
 - `POST /api/products/`
 - `POST /api/scan/segment/`
@@ -120,8 +126,8 @@ flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
 3. L’onglet Scan permet de prendre une photo ou d’importer une image.
 4. Si plusieurs produits sont détectés, l’écran de segmentation permet d’en sélectionner un ou plusieurs.
 5. Le backend renvoie les résultats d’analyse.
-6. L’écran de test affiche seulement les ingrédients détectés.
-7. Les onglets Profil et Mes produits permettent de gérer les informations utilisateur et les produits associés.
+6. L’écran de test affiche les ingrédients détectés et propose un bouton pour enregistrer le produit si l’utilisateur le souhaite.
+7. Les onglets Profil et Mes produits permettent de gérer les informations utilisateur, les allergies, les notes libres et les produits associés.
 
 ## Commandes utiles
 
@@ -134,5 +140,5 @@ flutter run
 ## Remarques
 
 - La page de test n’affiche pas le JSON complet, uniquement les ingrédients.
-- Le backend supporte déjà le login, le profil courant et les produits rattachés à l’utilisateur.
+- Le backend supporte déjà le login, le profil courant, les allergies utilisateur et les produits rattachés à l’utilisateur.
 - La base URL est centralisée pour faciliter le passage de local à ngrok plus tard.
