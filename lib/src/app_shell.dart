@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/scan_screen.dart';
+import 'screens/scan_result_screen.dart';
 import 'screens/login_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -38,6 +39,7 @@ class _AppShellState extends State<AppShell> {
       const CompareListsScreen(),
       const CompareProductsScreen(),
       const ProfileScreen(),
+      const ScanResultScreen(),
     ];
 
     return Scaffold(
@@ -66,6 +68,7 @@ class _AppShellState extends State<AppShell> {
             _buildDrawerItem(4, Icons.lightbulb, 'Suggestions'),
             _buildDrawerItem(3, Icons.inventory_2, 'Mes produits'),
             _buildDrawerItem(5, Icons.analytics, 'Comparer Produits'),
+            _buildDrawerItem(7, Icons.assessment_outlined, 'Rapport de Risque'),
             _buildDrawerItem(6, Icons.person, 'Profil'),
             const Divider(),
             ListTile(
@@ -95,9 +98,10 @@ class _AppShellState extends State<AppShell> {
           0 => 0,
           1 => 1,
           2 => 2,
-          4 => 3,
-          3 => 4,
-          6 => 5,
+          7 => 3,
+          4 => 4,
+          3 => 5,
+          6 => 6,
           _ => 0,
         },
         onDestinationSelected: (value) {
@@ -105,9 +109,10 @@ class _AppShellState extends State<AppShell> {
             0 => 0,
             1 => 1,
             2 => 2,
-            3 => 4,
-            4 => 3,
-            5 => 6,
+            3 => 7,
+            4 => 4,
+            5 => 3,
+            6 => 6,
             _ => 1,
           };
           setState(() => _index = targetIndex);
@@ -127,6 +132,11 @@ class _AppShellState extends State<AppShell> {
             icon: Icon(Icons.camera_alt_outlined),
             selectedIcon: Icon(Icons.camera_alt),
             label: 'Scan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.assessment_outlined),
+            selectedIcon: Icon(Icons.assessment),
+            label: 'Rapport',
           ),
           NavigationDestination(
             icon: Icon(Icons.lightbulb_outline),
