@@ -160,13 +160,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
       if (!mounted) return;
 
       Navigator.of(context).pop(
-        results.map((item) => {
-          'product_id': item.productId,
-          'name': item.name,
-          'brand': item.brand,
-          'category': item.category,
-          'ingredients': item.ingredients,
-        }).toList(),
+        results,
       );
     } catch (e) {
       if (!mounted) return;

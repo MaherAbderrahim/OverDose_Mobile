@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
+import '../ui/ui_kit.dart';
 import 'scan_result_screen.dart';
 import 'segmentation_screen.dart';
 
@@ -25,37 +26,27 @@ class _ScanScreenState extends State<ScanScreen> {
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
 
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-          sliver: SliverToBoxAdapter(
-            child: Text(
-              'Scan produit',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+      children: [
+        HighlightBanner(
+          title: 'Scanner un produit',
+          subtitle:
+              'Choisissez une image puis lancez soit une analyse rapide, soit une segmentation pour plusieurs produits.',
+          icon: Icons.center_focus_strong_outlined,
+          colors: const [AppColors.softBlue, AppColors.softPink],
         ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverToBoxAdapter(
-            child: _ScanHero(
-              selectedImage: _selectedImage,
-              isPicking: _isPicking || controller.isBusy,
-              onCamera: () => _pickImage(ImageSource.camera),
-              onGallery: () => _pickImage(ImageSource.gallery),
-              onAnalyze: _selectedImage == null ? null : _openSegmentationFlow,
-              onQuickScan: _selectedImage == null ? null : _runQuickScan,
-            ),
-          ),
+        const SizedBox(height: 16),
+        _ScanHero(
+          selectedImage: _selectedImage,
+          isPicking: _isPicking || controller.isBusy,
+          onCamera: () => _pickImage(ImageSource.camera),
+          onGallery: () => _pickImage(ImageSource.gallery),
+          onAnalyze: _selectedImage == null ? null : _openSegmentationFlow,
+          onQuickScan: _selectedImage == null ? null : _runQuickScan,
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: 18)),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverToBoxAdapter(child: _HowItWorksCard()),
-        ),
+        const SizedBox(height: 16),
+        const _HowItWorksCard(),
       ],
     );
   }
@@ -105,8 +96,11 @@ class _ScanScreenState extends State<ScanScreen> {
 
     List<dynamic>? result;
     try {
-      result = await Navigator.of(context).push<List<dynamic>>(
+      result = await _runWithLoading<List<dynamic>?>(
+        'Preparation de la segmentation...',
+        () => Navigator.of(context).push<List<dynamic>>(
         MaterialPageRoute(builder: (_) => SegmentationScreen(imageFile: image)),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -122,12 +116,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
     if (!mounted || result == null || result.isEmpty) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            ScanResultScreen(results: result!.cast<Map<String, dynamic>>()),
-      ),
-    );
+    final payload = result.cast<Map<String, dynamic>>();
+    context.read<AppController>().setLastScanPayload(payload);
+    await showScanResultSheet(context, results: payload);
   }
 
   Future<void> _runQuickScan() async {
@@ -136,22 +127,25 @@ class _ScanScreenState extends State<ScanScreen> {
 
     final controller = context.read<AppController>();
     try {
-      final response = await controller.quickScanImage(image);
+      final response = await _runWithLoading(
+        'Analyse en cours...',
+        () => controller.quickScanImage(image),
+      );
       if (!mounted) return;
 
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ScanResultScreen(
-            results: [
-              {
-                ...(response.analysis ?? <String, dynamic>{}),
-                'product_id': response.scanId.toString(),
-                'ingredients': response.ingredients,
-              },
-            ],
-          ),
-        ),
-      );
+      final payload = [
+        {
+          ...(response.analysis ?? <String, dynamic>{}),
+          'product_id': response.scanId.toString(),
+          'ingredients': response.ingredients,
+          'risks': response.risks,
+          'recommendations': response.recommendations,
+          'cumulative_report': response.cumulativeReport,
+        },
+      ];
+
+      controller.setLastScanPayload(payload);
+      await showScanResultSheet(context, results: payload);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -160,6 +154,24 @@ class _ScanScreenState extends State<ScanScreen> {
             backgroundColor: const Color(0xFFB53F2F),
           ),
         );
+      }
+    }
+  }
+
+  Future<T> _runWithLoading<T>(
+    String title,
+    Future<T> Function() action,
+  ) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _LoadingDialog(title: title),
+    );
+    try {
+      return await action();
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
       }
     }
   }
@@ -194,78 +206,72 @@ class _ScanHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: const Color(0xFFF1F7F3),
-                image: selectedImage == null
-                    ? null
-                    : DecorationImage(
-                        image: _xFileImageProvider(selectedImage!),
-                        fit: BoxFit.cover,
-                      ),
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              color: const Color(0xFFF5EEE8),
+              image: selectedImage == null
+                  ? null
+                  : DecorationImage(
+                      image: _xFileImageProvider(selectedImage!),
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            child: selectedImage == null
+                ? const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.camera_enhance_outlined,
+                          size: 42,
+                          color: AppColors.ink,
+                        ),
+                        SizedBox(height: 10),
+                        Text('Prenez une photo ou importez une image pour demarrer.'),
+                      ],
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: (isPicking || kIsWeb) ? null : onCamera,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: Text(kIsWeb ? 'Camera indisponible' : 'Camera'),
+                ),
               ),
-              child: selectedImage == null
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.camera_enhance_outlined,
-                            size: 42,
-                            color: Color(0xFF12372A),
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Prends une photo ou importe une image pour démarrer.',
-                          ),
-                        ],
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    // Désactiver la caméra sur Web
-                    onPressed: (isPicking || kIsWeb) ? null : onCamera,
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(kIsWeb ? 'Caméra (N/A)' : 'Caméra'),
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isPicking ? null : onGallery,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Galerie'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: isPicking ? null : onGallery,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Galerie'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: onAnalyze,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Segmenter et sélectionner'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: onQuickScan,
-              icon: const Icon(Icons.flash_on_outlined),
-              label: const Text('Analyse rapide'),
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onAnalyze,
+            icon: const Icon(Icons.grid_view_rounded),
+            label: const Text('Segmenter et selectionner'),
+          ),
+          const SizedBox(height: 10),
+          FilledButton.tonalIcon(
+            onPressed: onQuickScan,
+            icon: const Icon(Icons.flash_on_outlined),
+            label: const Text('Analyse rapide'),
+          ),
+        ],
       ),
     );
   }
@@ -276,36 +282,33 @@ class _HowItWorksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            Text(
-              'Flux de scan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: 12),
-            _StepItem(
-              index: '1',
-              title: 'Capture ou import',
-              subtitle: 'Prends une photo ou choisis depuis la galerie.',
-            ),
-            SizedBox(height: 10),
-            _StepItem(
-              index: '2',
-              title: 'Segmentation',
-              subtitle: 'Le backend renvoie les crops détectés dans l\'image.',
-            ),
-            SizedBox(height: 10),
-            _StepItem(
-              index: '3',
-              title: 'Sélection et analyse',
-              subtitle: 'Choisis un ou plusieurs produits puis lance le scan.',
-            ),
-          ],
-        ),
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          SectionTitle(
+            title: 'Flux de scan',
+            subtitle: 'Progression simple, sans surcharge scientifique immediate.',
+          ),
+          SizedBox(height: 12),
+          _StepItem(
+            index: '1',
+            title: 'Capture ou import',
+            subtitle: 'Prenez une photo ou choisissez une image depuis la galerie.',
+          ),
+          SizedBox(height: 10),
+          _StepItem(
+            index: '2',
+            title: 'Segmentation optionnelle',
+            subtitle: 'Le backend renvoie les crops detectes si plusieurs produits sont presents.',
+          ),
+          SizedBox(height: 10),
+          _StepItem(
+            index: '3',
+            title: 'Decision rapide',
+            subtitle: 'Vous obtenez un verdict, des details optionnels et une action immediate.',
+          ),
+        ],
       ),
     );
   }
@@ -329,7 +332,7 @@ class _StepItem extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: const Color(0xFF12372A),
+          backgroundColor: AppColors.ink,
           child: Text(
             index,
             style: const TextStyle(
@@ -350,6 +353,66 @@ class _StepItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LoadingDialog extends StatefulWidget {
+  const _LoadingDialog({required this.title});
+
+  final String title;
+
+  @override
+  State<_LoadingDialog> createState() => _LoadingDialogState();
+}
+
+class _LoadingDialogState extends State<_LoadingDialog> {
+  int _step = 0;
+  static const _messages = [
+    'Extraction des ingredients',
+    'Analyse des risques',
+    'Adaptation au profil',
+    'Recherche d alternatives',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    Future.doWhile(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (!mounted || _step >= _messages.length - 1) return false;
+      setState(() => _step++);
+      return true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassCard(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 34,
+              height: 34,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              widget.title,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _messages[_step],
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

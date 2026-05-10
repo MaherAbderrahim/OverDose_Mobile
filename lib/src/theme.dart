@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'ui/ui_kit.dart';
+
 ThemeData buildAppTheme(Brightness brightness) {
-  final seed = const Color(0xFF00D2FF).withOpacity(0.678);
+  final seed = AppColors.softPeach.withValues(alpha: 0.82);
   final colorScheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
-    surface: const Color(0xFFF0F9FF),
+    surface: AppColors.surface,
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: colorScheme);
 
   return base.copyWith(
-    scaffoldBackgroundColor: const Color(0xFFF0F7FA),
+    scaffoldBackgroundColor: AppColors.background,
     textTheme: GoogleFonts.spaceGroteskTextTheme(base.textTheme),
+    colorScheme: colorScheme.copyWith(
+      primary: AppColors.ink,
+      secondary: AppColors.softPeach,
+      surface: AppColors.surface,
+      onSurface: AppColors.ink,
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -21,31 +29,58 @@ ThemeData buildAppTheme(Brightness brightness) {
       titleTextStyle: GoogleFonts.spaceGrotesk(
         fontSize: 22,
         fontWeight: FontWeight.w700,
-        color: colorScheme.onSurface,
+        color: AppColors.ink,
       ),
+      iconTheme: const IconThemeData(color: AppColors.ink),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
+      color: Colors.white.withValues(alpha: 0.86),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       margin: EdgeInsets.zero,
     ),
+    chipTheme: base.chipTheme.copyWith(
+      backgroundColor: Colors.white.withValues(alpha: 0.82),
+      selectedColor: AppColors.ink,
+      side: BorderSide(color: AppColors.ink.withValues(alpha: 0.08)),
+      labelStyle: const TextStyle(color: AppColors.ink),
+      secondaryLabelStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Colors.white.withValues(alpha: 0.92),
+      labelStyle: const TextStyle(color: AppColors.muted),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFE1F5FE)),
+        borderSide: BorderSide(
+          color: AppColors.ink.withValues(alpha: 0.08),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: seed.withOpacity(1), width: 1.2),
+        borderSide: BorderSide(color: seed, width: 1.2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      indicatorColor: AppColors.softBlue,
+      labelTextStyle: WidgetStateProperty.all(
+        const TextStyle(fontWeight: FontWeight.w600, color: AppColors.ink),
+      ),
+    ),
+    dividerColor: AppColors.ink.withValues(alpha: 0.08),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.ink,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 }

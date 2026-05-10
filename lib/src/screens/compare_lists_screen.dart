@@ -160,7 +160,7 @@ class CompareListsScreen extends StatelessWidget {
                         border: Border.all(color: const Color(0xFFEEEEEE)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -214,7 +214,7 @@ class _ListColumn extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: headerColor.withOpacity(0.3),
+              color: headerColor.withValues(alpha: 0.3),
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Column(

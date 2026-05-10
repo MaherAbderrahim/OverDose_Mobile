@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import 'app_controller.dart';
 import 'app_shell.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'theme.dart';
+import 'ui/ui_kit.dart';
 
 class OverDoseApp extends StatelessWidget {
   const OverDoseApp({super.key});
@@ -35,8 +38,44 @@ class AppGate extends StatelessWidget {
       return const _BootScreen();
     }
 
-    // Always show AppShell so navigation is available even without login
-    return const AppShell();
+    if (controller.isAuthenticated) {
+      if (controller.needsOnboarding) {
+        return const OnboardingScreen();
+      }
+      return const AppShell();
+    }
+
+    return _WelcomeAuthFlow();
+  }
+}
+
+class _WelcomeAuthFlow extends StatefulWidget {
+  @override
+  State<_WelcomeAuthFlow> createState() => _WelcomeAuthFlowState();
+}
+
+class _WelcomeAuthFlowState extends State<_WelcomeAuthFlow> {
+  bool _showAuth = false;
+  bool _showRegister = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showAuth) {
+      return LoginScreen(
+        initialRegister: _showRegister,
+        onBack: () => setState(() => _showAuth = false),
+      );
+    }
+    return WelcomeScreen(
+      onSignIn: () => setState(() {
+        _showRegister = false;
+        _showAuth = true;
+      }),
+      onSignUp: () => setState(() {
+        _showRegister = true;
+        _showAuth = true;
+      }),
+    );
   }
 }
 
@@ -47,13 +86,7 @@ class _BootScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF4F1E8), Color(0xFFE8F4EF), Color(0xFFFDF9F0)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        decoration: buildPageBackground(),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -62,7 +95,7 @@ class _BootScreen extends StatelessWidget {
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF12372A),
+                  color: AppColors.ink,
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: const Icon(
@@ -77,7 +110,7 @@ class _BootScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF12372A),
+                  color: AppColors.ink,
                 ),
               ),
               const SizedBox(height: 10),

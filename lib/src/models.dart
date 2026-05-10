@@ -5,8 +5,14 @@ enum ProductCategory { food, cosmetic, unknown }
 extension ProductCategoryX on ProductCategory {
   String get label => switch (this) {
     ProductCategory.food => 'Alimentaire',
-    ProductCategory.cosmetic => 'Cosmétique',
+    ProductCategory.cosmetic => 'Cosmetique',
     ProductCategory.unknown => 'Autre',
+  };
+
+  String get recommendationType => switch (this) {
+    ProductCategory.food => 'food',
+    ProductCategory.cosmetic => 'cosmetics',
+    ProductCategory.unknown => 'cosmetics',
   };
 
   static ProductCategory fromApi(String? value) {
@@ -19,6 +25,14 @@ extension ProductCategoryX on ProductCategory {
   }
 }
 
+extension StringCasingX on String {
+  String get sentenceCase {
+    if (trim().isEmpty) return this;
+    final value = trim().toLowerCase();
+    return '${value[0].toUpperCase()}${value.substring(1)}';
+  }
+}
+
 @immutable
 class AppUser {
   const AppUser({
@@ -26,9 +40,12 @@ class AppUser {
     required this.firstName,
     required this.lastName,
     required this.email,
+    required this.age,
+    required this.userType,
     required this.gender,
     required this.dateOfBirth,
     required this.notes,
+    required this.aiReport,
     this.createdAt,
     this.updatedAt,
   });
@@ -37,9 +54,12 @@ class AppUser {
   final String firstName;
   final String lastName;
   final String email;
+  final int? age;
+  final String userType;
   final String gender;
   final DateTime? dateOfBirth;
   final String notes;
+  final Map<String, dynamic> aiReport;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -51,22 +71,34 @@ class AppUser {
     return combined.isEmpty ? email : combined;
   }
 
+  String get userTypeLabel =>
+      userType.trim().isEmpty ? 'A definir' : userType.replaceAll('_', ' ').sentenceCase;
+
+  bool get hasOnboardingData =>
+      userType.trim().isNotEmpty || aiReport.isNotEmpty || notes.trim().isNotEmpty;
+
   AppUser copyWith({
     String? firstName,
     String? lastName,
     String? email,
+    int? age,
+    String? userType,
     String? gender,
     DateTime? dateOfBirth,
     String? notes,
+    Map<String, dynamic>? aiReport,
   }) {
     return AppUser(
       id: id,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
+      age: age ?? this.age,
+      userType: userType ?? this.userType,
       gender: gender ?? this.gender,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       notes: notes ?? this.notes,
+      aiReport: aiReport ?? this.aiReport,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -78,9 +110,14 @@ class AppUser {
       firstName: (json['first_name'] ?? '') as String,
       lastName: (json['last_name'] ?? '') as String,
       email: (json['email'] ?? '') as String,
+      age: (json['age'] as num?)?.toInt(),
+      userType: (json['user_type'] ?? '') as String,
       gender: (json['gender'] ?? '') as String,
       dateOfBirth: _tryParseDate(json['date_of_birth']?.toString()),
       notes: (json['notes'] ?? '') as String,
+      aiReport: json['ai_report'] is Map
+          ? Map<String, dynamic>.from(json['ai_report'] as Map)
+          : const <String, dynamic>{},
       createdAt: _tryParseDate(json['created_at']?.toString()),
       updatedAt: _tryParseDate(json['updated_at']?.toString()),
     );
@@ -90,6 +127,8 @@ class AppUser {
     'first_name': firstName,
     'last_name': lastName,
     'email': email,
+    'age': age,
+    'user_type': userType,
     'gender': gender,
     'date_of_birth': dateOfBirth?.toIso8601String().split('T').first,
     'notes': notes,
@@ -121,6 +160,12 @@ class ProductItem {
     required this.ingredients,
     required this.barcode,
     required this.extractionMethod,
+    this.userDecision,
+    this.userDecisionNotes = '',
+    this.investigationReport = const <String, dynamic>{},
+    this.filteringReport = const <String, dynamic>{},
+    this.createdAt,
+    this.updatedAt,
   });
 
   final int id;
@@ -130,6 +175,40 @@ class ProductItem {
   final List<String> ingredients;
   final String barcode;
   final String extractionMethod;
+  final String? userDecision;
+  final String userDecisionNotes;
+  final Map<String, dynamic> investigationReport;
+  final Map<String, dynamic> filteringReport;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  String get displayTitle => brand.trim().isEmpty ? name : '$brand • $name';
+
+  String get riskLevel => deriveRiskLevelFromPayload({
+    'investigation_report': investigationReport,
+    'filtering_report': filteringReport,
+  });
+
+  String get decisionLabel {
+    return switch (userDecision) {
+      'approved' => 'Adopte',
+      'saved' => 'Sauvegarde',
+      'pending' => 'A revoir',
+      'rejected' => 'Rejete',
+      _ => 'Sans decision',
+    };
+  }
+
+  String get extractionLabel {
+    return switch (extractionMethod) {
+      'barcode' => 'Barcode',
+      'lens' => 'Vision',
+      'unknown' => 'Mixte',
+      _ => extractionMethod.trim().isEmpty ? 'Non precise' : extractionMethod,
+    };
+  }
+
+  bool get isHighRisk => riskLevel == 'CRITICAL' || riskLevel == 'HIGH';
 
   factory ProductItem.fromJson(Map<String, dynamic> json) {
     return ProductItem(
@@ -142,7 +221,243 @@ class ProductItem {
           .toList(),
       barcode: (json['barcode'] ?? '') as String,
       extractionMethod: (json['extraction_method'] ?? '') as String,
+      userDecision: json['user_decision']?.toString(),
+      userDecisionNotes: (json['user_decision_notes'] ?? '') as String,
+      investigationReport: json['investigation_report'] is Map
+          ? Map<String, dynamic>.from(json['investigation_report'] as Map)
+          : const <String, dynamic>{},
+      filteringReport: json['filtering_report'] is Map
+          ? Map<String, dynamic>.from(json['filtering_report'] as Map)
+          : const <String, dynamic>{},
+      createdAt: _tryParseDate(json['created_at']?.toString()),
+      updatedAt: _tryParseDate(json['updated_at']?.toString()),
     );
+  }
+}
+
+@immutable
+class MyProductsResponse {
+  const MyProductsResponse({required this.products, required this.counts});
+
+  final List<ProductItem> products;
+  final Map<String, int> counts;
+
+  factory MyProductsResponse.fromJson(Map<String, dynamic> json) {
+    final rawProducts = json['products'] as List<dynamic>? ?? const [];
+    final rawCounts = json['counts'] as Map<String, dynamic>? ?? const {};
+    return MyProductsResponse(
+      products: rawProducts
+          .map(
+            (item) =>
+                ProductItem.fromJson(Map<String, dynamic>.from(item as Map)),
+          )
+          .toList(),
+      counts: rawCounts.map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+    );
+  }
+}
+
+@immutable
+class CumulativeSummary {
+  const CumulativeSummary({required this.raw});
+
+  final Map<String, dynamic> raw;
+
+  factory CumulativeSummary.fromJson(Map<String, dynamic> json) {
+    return CumulativeSummary(raw: json);
+  }
+
+  Map<String, dynamic> get globalSummary {
+    final value = raw['global_summary'];
+    return value is Map ? Map<String, dynamic>.from(value) : const {};
+  }
+
+  List<Map<String, dynamic>> get productVerdicts {
+    final value = raw['product_verdicts'];
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get productRiskResults {
+    final scoring = raw['scoring_analysis'];
+    if (scoring is! Map) return const [];
+    final results = scoring['product_risk_results'];
+    if (results is! List) return const [];
+    return results
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  List<String> get keyWarnings {
+    final warnings = <String>{};
+    final overall = raw['overall_assessment'];
+    if (overall is String && overall.trim().isNotEmpty) {
+      warnings.add(overall.trim());
+    }
+
+    for (final verdict in productVerdicts.take(3)) {
+      final productName = verdict['product_name']?.toString();
+      final risk = verdict['risk_level']?.toString();
+      final recommendation = verdict['recommendation']?.toString();
+      if ((productName ?? '').isNotEmpty &&
+          (risk ?? '').isNotEmpty &&
+          (recommendation ?? '').isNotEmpty) {
+        warnings.add('$productName: ${risk!.sentenceCase}, ${recommendation!.toLowerCase()}');
+      }
+    }
+
+    return warnings.take(4).toList();
+  }
+
+  String get overallAssessment {
+    final value = raw['overall_assessment'];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+    if (productsToAvoid > 0) {
+      return 'Plusieurs produits meritent d etre evites selon votre profil.';
+    }
+    if (productsToReduce > 0) {
+      return 'Certains produits sont a reduire pour limiter les risques cumules.';
+    }
+    return 'Votre vue cumulative reste globalement stable pour le moment.';
+  }
+
+  int get productsToReduce =>
+      (globalSummary['products_to_reduce'] as num?)?.toInt() ?? 0;
+
+  int get productsToAvoid =>
+      (globalSummary['products_to_avoid'] as num?)?.toInt() ?? 0;
+
+  int get productCount {
+    if (productVerdicts.isNotEmpty) return productVerdicts.length;
+    return productRiskResults.length;
+  }
+
+  int get flaggedProducts => productVerdicts.where((item) {
+    final risk = item['risk_level']?.toString().toUpperCase();
+    return risk == 'HIGH' || risk == 'CRITICAL';
+  }).length;
+
+  bool get hasData => raw.isNotEmpty;
+}
+
+@immutable
+class SearchAlternativesResponse {
+  const SearchAlternativesResponse({
+    required this.status,
+    required this.productName,
+    required this.productType,
+    required this.rawResults,
+    required this.errors,
+  });
+
+  final String status;
+  final String productName;
+  final String productType;
+  final dynamic rawResults;
+  final List<String> errors;
+
+  List<AlternativeSuggestion> get suggestions {
+    final items = <AlternativeSuggestion>[];
+
+    if (rawResults is List) {
+      for (final item in rawResults as List<dynamic>) {
+        final suggestion = AlternativeSuggestion.fromUnknown(item);
+        if (suggestion != null) items.add(suggestion);
+      }
+    } else if (rawResults is Map) {
+      final map = Map<String, dynamic>.from(rawResults as Map);
+      final nested = map['results'] ?? map['items'] ?? map['alternatives'];
+      if (nested is List) {
+        for (final item in nested) {
+          final suggestion = AlternativeSuggestion.fromUnknown(item);
+          if (suggestion != null) items.add(suggestion);
+        }
+      } else {
+        final suggestion = AlternativeSuggestion.fromUnknown(map);
+        if (suggestion != null) items.add(suggestion);
+      }
+    }
+
+    return items;
+  }
+
+  factory SearchAlternativesResponse.fromJson(Map<String, dynamic> json) {
+    return SearchAlternativesResponse(
+      status: (json['status'] ?? '') as String,
+      productName: (json['product_name'] ?? '') as String,
+      productType: (json['product_type'] ?? '') as String,
+      rawResults: json['results'],
+      errors: (json['errors'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+    );
+  }
+}
+
+@immutable
+class AlternativeSuggestion {
+  const AlternativeSuggestion({
+    required this.title,
+    required this.subtitle,
+    required this.reason,
+    this.price,
+    this.imageUrl,
+    this.shopUrl,
+  });
+
+  final String title;
+  final String subtitle;
+  final String reason;
+  final String? price;
+  final String? imageUrl;
+  final String? shopUrl;
+
+  factory AlternativeSuggestion.fromMap(Map<String, dynamic> json) {
+    return AlternativeSuggestion(
+      title: (json['title'] ??
+              json['name'] ??
+              json['product'] ??
+              json['product_name'] ??
+              'Alternative')
+          .toString(),
+      subtitle: (json['brand'] ??
+              json['source'] ??
+              json['merchant'] ??
+              json['category'] ??
+              '')
+          .toString(),
+      reason: (json['reason'] ??
+              json['why'] ??
+              json['summary'] ??
+              json['description'] ??
+              'Alternative suggeree par le moteur de recherche.')
+          .toString(),
+      price: json['price']?.toString(),
+      imageUrl: json['image']?.toString() ?? json['image_url']?.toString(),
+      shopUrl: json['url']?.toString() ?? json['link']?.toString(),
+    );
+  }
+
+  static AlternativeSuggestion? fromUnknown(dynamic value) {
+    if (value is Map) {
+      return AlternativeSuggestion.fromMap(Map<String, dynamic>.from(value));
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return AlternativeSuggestion(
+        title: value.trim(),
+        subtitle: '',
+        reason: 'Suggestion retournee par le backend.',
+      );
+    }
+    return null;
   }
 }
 
@@ -262,11 +577,19 @@ class QuickScanResponse {
     required this.scanId,
     required this.ingredients,
     this.analysis,
+    this.risks = const [],
+    this.recommendations = const [],
+    this.userDecision,
+    this.cumulativeReport,
   });
 
   final int scanId;
   final List<String> ingredients;
   final Map<String, dynamic>? analysis;
+  final List<Map<String, dynamic>> risks;
+  final List<Map<String, dynamic>> recommendations;
+  final String? userDecision;
+  final Map<String, dynamic>? cumulativeReport;
 
   factory QuickScanResponse.fromJson(Map<String, dynamic> json) {
     return QuickScanResponse(
@@ -274,17 +597,69 @@ class QuickScanResponse {
       ingredients: (json['ingredients'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
-      analysis: json['analysis'] is Map<String, dynamic>
+      analysis: json['analysis'] is Map
           ? Map<String, dynamic>.from(json['analysis'] as Map)
+          : null,
+      risks: (json['risks'] as List<dynamic>? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(),
+      recommendations: (json['recommendations'] as List<dynamic>? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(),
+      userDecision: json['user_decision']?.toString(),
+      cumulativeReport: json['cumulative_report'] is Map
+          ? Map<String, dynamic>.from(json['cumulative_report'] as Map)
           : null,
     );
   }
+}
+
+String deriveRiskLevelFromPayload(Map<String, dynamic> result) {
+  final risks = result['risks'];
+  if (risks is List && risks.isNotEmpty) {
+    final levels = risks
+        .map(
+          (e) => (e is Map ? e['level']?.toString().toLowerCase() : null) ?? '',
+        )
+        .toList();
+    if (levels.contains('critical')) return 'CRITICAL';
+    if (levels.contains('high')) return 'HIGH';
+    if (levels.contains('medium') || levels.contains('moderate')) {
+      return 'MODERATE';
+    }
+    if (levels.contains('low')) return 'LOW';
+  }
+
+  final filtering = result['filtering_report'];
+  if (filtering is Map && filtering['recommendation'] != null) {
+    final recommendation = filtering['recommendation'].toString().toLowerCase();
+    if (recommendation.contains('critical')) return 'CRITICAL';
+    if (recommendation.contains('avoid')) return 'HIGH';
+    if (recommendation.contains('reduce')) return 'MODERATE';
+  }
+
+  final investigation = result['investigation_report'];
+  if (investigation is Map) {
+    final summary = investigation['summary'];
+    if (summary is Map) {
+      final critical = (summary['critical'] as num?)?.toInt() ?? 0;
+      final high = (summary['high'] as num?)?.toInt() ?? 0;
+      final moderate = (summary['moderate'] as num?)?.toInt() ?? 0;
+      if (critical > 0) return 'CRITICAL';
+      if (high > 0) return 'HIGH';
+      if (moderate > 0) return 'MODERATE';
+      return 'LOW';
+    }
+  }
+
+  return 'UNKNOWN';
 }
 
 DateTime? _tryParseDate(String? value) {
   if (value == null || value.isEmpty) {
     return null;
   }
-
   return DateTime.tryParse(value);
 }

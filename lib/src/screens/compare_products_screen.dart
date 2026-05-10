@@ -191,7 +191,7 @@ class _CompareProductsScreenState extends State<CompareProductsScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -306,8 +306,8 @@ class _ComparisonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lightColor = color.withOpacity(0.05);
-    final borderColor = color.withOpacity(0.3);
+    final lightColor = color.withValues(alpha: 0.05);
+    final borderColor = color.withValues(alpha: 0.3);
 
     return Container(
       decoration: BoxDecoration(

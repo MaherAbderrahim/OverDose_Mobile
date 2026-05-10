@@ -1,15 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_controller.dart';
-import 'screens/compare_lists_screen.dart';
-import 'screens/compare_products_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/scan_screen.dart';
-import 'screens/scan_result_screen.dart';
-import 'screens/login_screen.dart';
+import 'ui/ui_kit.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -20,6 +18,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+
+  static const _titles = ['Dashboard', 'Scan', 'Mes produits', 'Profil'];
 
   @override
   void initState() {
@@ -32,150 +32,117 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const LoginScreen(),
-      const HomeScreen(),
+      const DashboardScreen(),
       const ScanScreen(),
       const ProductsScreen(),
-      const CompareListsScreen(),
-      const CompareProductsScreen(),
       const ProfileScreen(),
-      const ScanResultScreen(),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('OverDose'),
-        backgroundColor: const Color(0xFFF0F7FA),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF00D2FF), Color(0xAD00D3FF)],
-                ),
-              ),
-              child: const Text(
-                'Menu Navigation',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-            _buildDrawerItem(0, Icons.login, 'Connexion'),
-            _buildDrawerItem(1, Icons.dashboard, 'Accueil'),
-            _buildDrawerItem(2, Icons.camera_alt, 'Scan'),
-            _buildDrawerItem(4, Icons.lightbulb, 'Suggestions'),
-            _buildDrawerItem(3, Icons.inventory_2, 'Mes produits'),
-            _buildDrawerItem(5, Icons.analytics, 'Comparer Produits'),
-            _buildDrawerItem(7, Icons.assessment_outlined, 'Rapport de Risque'),
-            _buildDrawerItem(6, Icons.person, 'Profil'),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Déconnexion'),
-              onTap: () {
-                context.read<AppController>().logout();
-              },
+    return _AppShellScope(
+      goToTab: (value) => setState(() => _index = value),
+      child: Scaffold(
+        extendBody: true,
+        appBar: AppBar(
+          title: Text(_titles[_index]),
+          actions: [
+            IconButton(
+              onPressed: () => context.read<AppController>().logout(),
+              icon: const Icon(Icons.logout),
+              tooltip: 'Deconnexion',
             ),
           ],
         ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF0F7FA), Color(0xFFF0F9FF), Color(0xFFE1F5FE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        body: Container(
+          decoration: buildPageBackground(),
+          child: SafeArea(
+            child: IndexedStack(index: _index, children: pages),
           ),
         ),
-        child: SafeArea(
-          child: IndexedStack(index: _index, children: pages),
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.ink.withValues(alpha: 0.05),
+                  blurRadius: 32,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18.0, sigmaY: 18.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: NavigationBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    height: 72,
+                    selectedIndex: _index,
+                    onDestinationSelected: (value) => setState(() => _index = value),
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.dashboard_outlined),
+                        selectedIcon: Icon(Icons.dashboard),
+                        label: 'Dashboard',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.camera_alt_outlined),
+                        selectedIcon: Icon(Icons.camera_alt),
+                        label: 'Scan',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.inventory_2_outlined),
+                        selectedIcon: Icon(Icons.inventory_2),
+                        label: 'Produits',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline),
+                        selectedIcon: Icon(Icons.person),
+                        label: 'Profil',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: switch (_index) {
-          0 => 0,
-          1 => 1,
-          2 => 2,
-          7 => 3,
-          4 => 4,
-          3 => 5,
-          6 => 6,
-          _ => 0,
-        },
-        onDestinationSelected: (value) {
-          final targetIndex = switch (value) {
-            0 => 0,
-            1 => 1,
-            2 => 2,
-            3 => 7,
-            4 => 4,
-            5 => 3,
-            6 => 6,
-            _ => 1,
-          };
-          setState(() => _index = targetIndex);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.login_outlined),
-            selectedIcon: Icon(Icons.login),
-            label: 'Login',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Accueil',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.camera_alt_outlined),
-            selectedIcon: Icon(Icons.camera_alt),
-            label: 'Scan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.assessment_outlined),
-            selectedIcon: Icon(Icons.assessment),
-            label: 'Rapport',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.lightbulb_outline),
-            selectedIcon: Icon(Icons.lightbulb),
-            label: 'Suggestions',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Produits',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
       ),
     );
   }
+}
 
-  Widget _buildDrawerItem(int index, IconData icon, String title) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: _index == index ? const Color(0xFF00D2FF) : null,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: _index == index ? FontWeight.bold : FontWeight.normal,
-          color: _index == index ? const Color(0xFF00D2FF) : null,
-        ),
-      ),
-      selected: _index == index,
-      onTap: () {
-        setState(() => _index = index);
-        Navigator.pop(context);
-      },
-    );
+class _AppShellScope extends InheritedWidget {
+  const _AppShellScope({
+    required this.goToTab,
+    required super.child,
+  });
+
+  final ValueChanged<int> goToTab;
+
+  static _AppShellScope of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_AppShellScope>();
+    assert(scope != null, 'No AppShell scope found in context');
+    return scope!;
+  }
+
+  @override
+  bool updateShouldNotify(_AppShellScope oldWidget) => false;
+}
+
+extension AppShellNavigationX on BuildContext {
+  void switchHomeTab(int index) {
+    _AppShellScope.of(this).goToTab(index);
   }
 }

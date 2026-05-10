@@ -93,6 +93,22 @@ class ApiClient {
     );
   }
 
+  Future<AppUser> updateUserType({
+    required String token,
+    required String userType,
+  }) async {
+    final response = await _patchJson(
+      '/api/users/me/user-type/',
+      token: token,
+      body: {'user_type': userType},
+    );
+    final rawUser = response['user'];
+    if (rawUser is Map) {
+      return AppUser.fromJson(Map<String, dynamic>.from(rawUser));
+    }
+    return fetchProfile(token);
+  }
+
   Future<AllergyItem> createAllergy({
     required String token,
     required String name,
@@ -115,6 +131,38 @@ class ApiClient {
               ProductItem.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
+  }
+
+  Future<MyProductsResponse> fetchMyProducts(
+    String token, {
+    String? status,
+  }) async {
+    final path = status == null || status.isEmpty
+        ? '/api/products/my-products/'
+        : '/api/products/my-products/?status=$status';
+    final response = await _getJson(path, token: token);
+    return MyProductsResponse.fromJson(response);
+  }
+
+  Future<void> patchProductDecision({
+    required String token,
+    required int productId,
+    required String decision,
+    String notes = '',
+  }) async {
+    await _patchJson(
+      '/api/products/$productId/decision/',
+      token: token,
+      body: {'decision': decision, 'notes': notes},
+    );
+  }
+
+  Future<CumulativeSummary?> fetchCumulativeSummary(String token) async {
+    final response = await _getJson(
+      '/api/users/cumulative-summary/',
+      token: token,
+    );
+    return CumulativeSummary.fromJson(response);
   }
 
   Future<ProductItem> createProduct({
@@ -200,7 +248,7 @@ class ApiClient {
     return SegmentationBatch.fromJson(response);
   }
 
-  Future<List<AnalyzedProduct>> analyzeSelected({
+  Future<List<Map<String, dynamic>>> analyzeSelected({
     required String token,
     required String sessionId,
     required List<String> productIds,
@@ -212,10 +260,8 @@ class ApiClient {
     );
     final results = response['results'] as List<dynamic>;
     return results
-        .map(
-          (item) =>
-              AnalyzedProduct.fromJson(Map<String, dynamic>.from(item as Map)),
-        )
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 
@@ -232,6 +278,24 @@ class ApiClient {
       file: image,
     );
     return QuickScanResponse.fromJson(response);
+  }
+
+  Future<SearchAlternativesResponse> searchAlternatives({
+    required String token,
+    required String productName,
+    required String productType,
+    int topK = 3,
+  }) async {
+    final response = await _postJson(
+      '/api/recommend/search/alternatives',
+      token: token,
+      body: {
+        'product_name': productName,
+        'product_type': productType,
+        'top_k': topK,
+      },
+    );
+    return SearchAlternativesResponse.fromJson(response);
   }
 
   Future<Map<String, dynamic>> _getJson(String path, {String? token}) async {
