@@ -4,248 +4,848 @@ import 'package:provider/provider.dart';
 import '../app_controller.dart';
 import '../app_shell.dart';
 import '../models.dart';
+import '../ui/animated_widgets.dart';
 import '../ui/ui_kit.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _refreshing = false;
+
+  Future<void> _onRefresh(AppController ctrl) async {
+    setState(() => _refreshing = true);
+    await ctrl.refreshProducts(silent: true);
+    await ctrl.refreshCumulativeSummary();
+    if (mounted) setState(() => _refreshing = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = context.watch<AppController>();
-    final summary = controller.cumulativeSummary;
-    final user = controller.currentUser;
-    final flaggedProducts = controller.highRiskProducts.take(3).toList();
+    final ctrl = context.watch<AppController>();
+    final summary = ctrl.cumulativeSummary;
+    final user = ctrl.currentUser;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+    final firstName = user?.firstName.trim().isNotEmpty == true
+        ? user!.firstName
+        : 'vous';
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await controller.refreshProducts(silent: true);
-        await controller.refreshCumulativeSummary();
-      },
+      onRefresh: () => _onRefresh(ctrl),
+      color: AppColors.ink,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
         children: [
-          HighlightBanner(
-            title:
-                'Bonjour ${user?.firstName.trim().isNotEmpty == true ? user!.firstName : 'vous'}',
-            subtitle: summary == null
-                ? 'Le scan reste votre entree principale, mais la vraie valeur long terme apparait ici des que vous ajoutez quelques produits.'
-                : summary.overallAssessment,
-            icon: Icons.insights_outlined,
-            action: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                FilledButton.tonal(
+          // ─── Header ───────────────────────────────────────────────────────
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 0),
+            child: _DashboardHeader(
+              greeting: greeting,
+              firstName: firstName,
+              summary: summary,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ─── Metric cards ─────────────────────────────────────────────────
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 80),
+            child: _MetricRow(ctrl: ctrl, summary: summary),
+          ),
+          const SizedBox(height: 18),
+
+          // ─── Overall assessment ───────────────────────────────────────────
+          if (summary != null) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 160),
+              child: _OverallAssessmentCard(summary: summary),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Organs under pressure ────────────────────────────────────────
+          if (summary != null && summary.organsUnderPressure.isNotEmpty) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 200),
+              child: _OrgansCard(summary: summary),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Product verdicts ─────────────────────────────────────────────
+          if (summary != null && summary.productVerdicts.isNotEmpty) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 240),
+              child: _ProductVerdictsCard(
+                summary: summary,
+                onViewAll: () => context.switchHomeTab(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Critical chemicals ───────────────────────────────────────────
+          if (summary != null && summary.criticalChemicals.isNotEmpty) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 280),
+              child: _ChemicalsAlertCard(summary: summary),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Safe ingredients ─────────────────────────────────────────────
+          if (summary != null && summary.safeIngredients.isNotEmpty) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 320),
+              child: _SafeIngredientsCard(summary: summary),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Decision summary ─────────────────────────────────────────────
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 360),
+            child: _DecisionSummaryCard(ctrl: ctrl),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── High risk products ───────────────────────────────────────────
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 400),
+            child: _HighRiskProductsCard(ctrl: ctrl),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Empty state ──────────────────────────────────────────────────
+          if (summary == null) ...[
+            StaggeredFadeIn(
+              delay: const Duration(milliseconds: 160),
+              child: EmptyStateCard(
+                title: 'Votre tableau de bord se construit',
+                message:
+                    'Ajoutez au moins 2 produits pour voir les tendances cumulées, les alertes et vos insights personnalisés.',
+                icon: Icons.insights_outlined,
+                action: FilledButton.icon(
                   onPressed: () => context.switchHomeTab(1),
-                  child: const Text('Lancer un scan'),
+                  icon: const Icon(Icons.center_focus_strong_outlined),
+                  label: const Text('Scanner maintenant'),
                 ),
-                FilledButton.tonal(
-                  onPressed: () => context.switchHomeTab(2),
-                  child: const Text('Mes produits'),
-                ),
-              ],
+              ),
             ),
+            const SizedBox(height: 16),
+          ],
+
+          // ─── Quick actions ────────────────────────────────────────────────
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 440),
+            child: _QuickActionsCard(),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: MetricCard(
-                  label: 'Produits',
-                  value: (controller.productCounts['total'] ?? controller.products.length)
-                      .toString(),
-                  icon: Icons.inventory_2_outlined,
-                  tint: AppColors.softBlue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: MetricCard(
-                  label: 'A reduire',
-                  value: summary?.productsToReduce.toString() ?? '0',
-                  icon: Icons.trending_down_rounded,
-                  tint: const Color(0xFFFFE7D6),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: MetricCard(
-                  label: 'A eviter',
-                  value: summary?.productsToAvoid.toString() ?? '0',
-                  icon: Icons.report_gmailerrorred_rounded,
-                  tint: const Color(0xFFFFD8E0),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (summary == null)
-            EmptyStateCard(
-              title: 'Pas encore de vue cumulative',
-              message:
-                  'Ajoutez au moins 2 produits pertinents a Mes produits pour voir les tendances cumulees, les alertes et les conseils actionnables.',
-              icon: Icons.auto_graph_outlined,
-              action: FilledButton.tonal(
-                onPressed: () => context.switchHomeTab(1),
-                child: const Text('Scanner maintenant'),
-              ),
-            ),
-          if (summary != null)
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle(
-                    title: 'Insights cumules',
-                    subtitle: 'Resume rapide avant les details plus scientifiques.',
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Produits analyses: ${summary.productCount}'),
-                  const SizedBox(height: 8),
-                  Text('Produits a risque eleve: ${summary.flaggedProducts}'),
-                  const SizedBox(height: 14),
-                  ...summary.keyWarnings.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Icon(
-                              Icons.brightness_1,
-                              size: 8,
-                              color: AppColors.softPeach,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(item)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 16),
-          GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionTitle(
-                  title: 'Decisions utilisateur',
-                  subtitle: 'Memoire active de vos choix recents.',
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _ChipStat(
-                      label: 'Approved',
-                      value: controller.productCounts['approved'] ?? 0,
-                    ),
-                    _ChipStat(
-                      label: 'Saved',
-                      value: controller.productCounts['saved'] ?? 0,
-                    ),
-                    _ChipStat(
-                      label: 'Pending',
-                      value: controller.productCounts['pending'] ?? 0,
-                    ),
-                    _ChipStat(
-                      label: 'Rejected',
-                      value: controller.productCounts['rejected'] ?? 0,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (flaggedProducts.isEmpty)
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle(
-                    title: 'Produits a surveiller',
-                    subtitle: 'Les produits les plus sensibles apparaissent ici.',
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    controller.products.isEmpty
-                        ? 'Aucun produit memorise pour le moment.'
-                        : 'Aucun produit a risque eleve n a ete detecte dans votre memoire actuelle.',
-                  ),
-                ],
-              ),
-            )
-          else
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle(
-                    title: 'Produits a surveiller',
-                    subtitle: 'A traiter rapidement depuis Mes produits.',
-                  ),
-                  const SizedBox(height: 14),
-                  ...flaggedProducts.map(
-                    (product) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            RiskChip(level: product.riskLevel),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    product.displayTitle,
-                                    style: const TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${product.decisionLabel} • ${product.category.label}',
-                                    style: const TextStyle(color: AppColors.muted),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  FilledButton.tonal(
-                    onPressed: () => context.switchHomeTab(2),
-                    child: const Text('Ouvrir Mes produits'),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
 }
 
-class _ChipStat extends StatelessWidget {
-  const _ChipStat({required this.label, required this.value});
+// ─── Header ──────────────────────────────────────────────────────────────────
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({
+    required this.greeting,
+    required this.firstName,
+    required this.summary,
+  });
 
-  final String label;
-  final int value;
+  final String greeting;
+  final String firstName;
+  final CumulativeSummary? summary;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(label: Text('$label: $value'));
+    return Container(
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting,',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  firstName,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (summary != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    summary!.overallAssessment.length > 80
+                        ? '${summary!.overallAssessment.substring(0, 77)}…'
+                        : summary!.overallAssessment,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.muted,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (summary != null) ...[
+            const SizedBox(width: 16),
+            HealthScoreRing(score: summary!.healthScore, size: 72),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Metric Row ───────────────────────────────────────────────────────────────
+class _MetricRow extends StatelessWidget {
+  const _MetricRow({required this.ctrl, required this.summary});
+
+  final AppController ctrl;
+  final CumulativeSummary? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = ctrl.productCounts['total'] ?? ctrl.products.length;
+    final toReduce = summary?.productsToReduce ?? 0;
+    final toAvoid = summary?.productsToAvoid ?? 0;
+    final safe = summary?.productsSafe ?? 0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _AnimatedMetricCard(
+            label: 'Produits',
+            value: total,
+            icon: Icons.inventory_2_outlined,
+            tint: AppColors.softBlue,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _AnimatedMetricCard(
+            label: 'Sûrs',
+            value: safe,
+            icon: Icons.check_circle_outline,
+            tint: const Color(0xFFD4F5E2),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _AnimatedMetricCard(
+            label: 'À éviter',
+            value: toAvoid,
+            icon: Icons.block_outlined,
+            tint: const Color(0xFFFFD8E0),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _AnimatedMetricCard(
+            label: 'À réduire',
+            value: toReduce,
+            icon: Icons.trending_down_rounded,
+            tint: const Color(0xFFFFE7D6),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnimatedMetricCard extends StatelessWidget {
+  const _AnimatedMetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.tint,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      radius: 22,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: tint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.ink, size: 18),
+          ),
+          const SizedBox(height: 12),
+          AnimatedCounter(
+            value: value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Overall Assessment Card ─────────────────────────────────────────────────
+class _OverallAssessmentCard extends StatelessWidget {
+  const _OverallAssessmentCard({required this.summary});
+
+  final CumulativeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRisk = summary.productsToAvoid > 0 || summary.criticalChemicals.isNotEmpty;
+    final gradient = hasRisk
+        ? [const Color(0xFFFFE7D6), const Color(0xFFFFD8E0)]
+        : [const Color(0xFFD4F5E2), AppColors.softBlue];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.first.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              hasRisk ? Icons.warning_amber_rounded : Icons.shield_outlined,
+              color: AppColors.ink,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasRisk ? 'Attention requise' : 'Profil globalement sain',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  summary.overallAssessment,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.ink,
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Organs Card ──────────────────────────────────────────────────────────────
+class _OrgansCard extends StatelessWidget {
+  const _OrgansCard({required this.summary});
+
+  final CumulativeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PulsingDot(color: AppColors.warning),
+              const SizedBox(width: 10),
+              const Text(
+                'Organes sous pression',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Ces organes sont exposés à des ingrédients préoccupants dans vos produits.',
+            style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: summary.organsUnderPressure
+                .map((organ) => OrganChip(organ: organ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Product Verdicts Card ────────────────────────────────────────────────────
+class _ProductVerdictsCard extends StatelessWidget {
+  const _ProductVerdictsCard({
+    required this.summary,
+    required this.onViewAll,
+  });
+
+  final CumulativeSummary summary;
+  final VoidCallback onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final verdicts = summary.sortedVerdicts.take(4).toList();
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            title: 'Verdicts produits',
+            subtitle: 'Analyse cumulative de votre panier.',
+            trailing: TextButton(
+              onPressed: onViewAll,
+              child: const Text('Voir tout'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...verdicts.map(
+            (verdict) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _VerdictRow(verdict: verdict),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerdictRow extends StatelessWidget {
+  const _VerdictRow({required this.verdict});
+
+  final Map<String, dynamic> verdict;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = verdict['product_name']?.toString() ?? 'Produit';
+    final recommendation = verdict['recommendation']?.toString() ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 10),
+          VerdictBadge(recommendation: recommendation),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Chemicals Alert Card ─────────────────────────────────────────────────────
+class _ChemicalsAlertCard extends StatelessWidget {
+  const _ChemicalsAlertCard({required this.summary});
+
+  final CumulativeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = [
+      ...summary.criticalChemicals.map((c) => (c, true)),
+      ...summary.highChemicals.take(3).map((c) => (c, false)),
+    ];
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PulsingDot(color: AppColors.danger),
+              const SizedBox(width: 10),
+              const Text(
+                'Ingrédients préoccupants',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Détectés dans plusieurs produits de votre liste.',
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: all.take(8).map((item) {
+              final color = item.$2 ? AppColors.danger : AppColors.warning;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  item.$1,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Safe Ingredients Card ────────────────────────────────────────────────────
+class _SafeIngredientsCard extends StatelessWidget {
+  const _SafeIngredientsCard({required this.summary});
+
+  final CumulativeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle(
+            title: 'Ingrédients maîtrisés',
+            subtitle: 'Ces ingrédients dans vos produits sont considérés sûrs.',
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: summary.safeIngredients.take(10).map(
+              (ing) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Text(
+                  ing,
+                  style: const TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Decision Summary Card ────────────────────────────────────────────────────
+class _DecisionSummaryCard extends StatelessWidget {
+  const _DecisionSummaryCard({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = ctrl.productCounts;
+    final items = [
+      ('Adoptés', counts['approved'] ?? 0, AppColors.success, Icons.check_circle_outline),
+      ('Sauvegardés', counts['saved'] ?? 0, AppColors.softBlue, Icons.bookmark_outline),
+      ('En attente', counts['pending'] ?? 0, AppColors.warning, Icons.hourglass_empty_outlined),
+      ('Rejetés', counts['rejected'] ?? 0, AppColors.danger, Icons.close_outlined),
+    ];
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle(
+            title: 'Mes décisions',
+            subtitle: 'Mémoire active de vos choix produits.',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: items.map((item) {
+              return Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: item.$3 is Color
+                            ? (item.$3 as Color).withValues(alpha: 0.12)
+                            : AppColors.softBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(item.$4, color: item.$3 as Color, size: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    AnimatedCounter(
+                      value: item.$2,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.$1,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── High Risk Products Card ──────────────────────────────────────────────────
+class _HighRiskProductsCard extends StatelessWidget {
+  const _HighRiskProductsCard({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final flagged = ctrl.highRiskProducts.take(3).toList();
+
+    if (flagged.isEmpty && ctrl.products.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            title: 'Produits à surveiller',
+            subtitle: flagged.isEmpty
+                ? 'Aucun produit à risque élevé détecté.'
+                : 'À traiter rapidement depuis Mes produits.',
+          ),
+          if (flagged.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ...flagged.map(
+              (product) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      RiskChip(level: product.riskLevel),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.displayTitle,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${product.decisionLabel} · ${product.category.label}',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            FilledButton.tonal(
+              onPressed: () => context.switchHomeTab(2),
+              child: const Text('Ouvrir Mes produits'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Quick Actions Card ───────────────────────────────────────────────────────
+class _QuickActionsCard extends StatelessWidget {
+  const _QuickActionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionButton(
+            icon: Icons.center_focus_strong_outlined,
+            label: 'Scanner',
+            onTap: () => context.switchHomeTab(1),
+            color: AppColors.softBlue,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _QuickActionButton(
+            icon: Icons.inventory_2_outlined,
+            label: 'Mes produits',
+            onTap: () => context.switchHomeTab(2),
+            color: AppColors.softPink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.ink, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

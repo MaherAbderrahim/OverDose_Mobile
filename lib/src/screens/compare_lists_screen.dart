@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../ui/transitions.dart';
 import 'compare_products_screen.dart';
 
 enum ToxicityLevel {
@@ -311,7 +312,7 @@ class _ProductTile extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CompareProductsScreen()),
+          SlideRightRoute(builder: (_) => const CompareProductsScreen()),
         );
       },
       child: Padding(
@@ -549,7 +550,7 @@ class _ComparisonReportBottomSheet extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const CompareProductsScreen()),
+                      SlideRightRoute(builder: (_) => const CompareProductsScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

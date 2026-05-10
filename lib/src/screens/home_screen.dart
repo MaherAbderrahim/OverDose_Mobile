@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import '../ui/transitions.dart';
 import 'compare_lists_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -214,7 +215,7 @@ class _QuickActionsCard extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CompareListsScreen()),
+                SlideRightRoute(builder: (_) => const CompareListsScreen()),
               ),
               icon: const Icon(Icons.compare_arrows),
               label: const Text('Comparer des listes de produits'),

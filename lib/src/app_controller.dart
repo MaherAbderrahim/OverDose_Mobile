@@ -25,12 +25,17 @@ class AppController extends ChangeNotifier {
   CumulativeSummary? cumulativeSummary;
   List<Map<String, dynamic>> lastScanPayload = const [];
   bool onboardingCompleted = false;
-  bool hasSkippedOnboarding = false; // Fix skip returning to onboarding
+  bool hasSkippedOnboarding = false;
+
+  // Notification preferences (stored locally for now)
+  bool notifyHighRisk = true;
+  bool notifyControversial = false;
 
   bool get isAuthenticated => token != null && token!.isNotEmpty;
   bool get needsOnboarding =>
       isAuthenticated &&
       !onboardingCompleted &&
+      !hasSkippedOnboarding &&
       ((currentUser?.userType.trim().isEmpty ?? true) ||
           selectedAllergyIds.isEmpty);
 
@@ -124,69 +129,54 @@ class AppController extends ChangeNotifier {
   }) async {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     await _runBusy(() async {
-      // FRONTEND ONLY - local state update
-      currentUser = updatedUser;
-      selectedAllergyIds = allergyIds;
-      _syncOnboardingState(forceComplete: updatedUser.userType.trim().isNotEmpty);
-
-      /* LATER: Reconnect to backend
+      // Update profile on backend
       currentUser = await _apiClient.updateProfile(
         token: token!,
         user: updatedUser,
       );
+      // Update allergies on backend
       await _apiClient.updateCurrentUserAllergies(
         token: token!,
         allergyIds: allergyIds,
       );
+      // Reload fresh data
       await _loadProfileExtras();
       _syncOnboardingState(forceComplete: updatedUser.userType.trim().isNotEmpty);
-      */
     });
   }
 
   Future<void> completeOnboarding({
     required String userType,
     required List<int> allergyIds,
+    bool notifyHighRisk = true,
+    bool notifyControversial = false,
   }) async {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     await _runBusy(() async {
-      // FRONTEND ONLY - local state update
-      if (currentUser != null) {
-        currentUser = currentUser!.copyWith(userType: userType);
-      }
-      selectedAllergyIds = allergyIds;
-      onboardingCompleted = true;
-
-      /* LATER: Reconnect to backend
+      // Update user type on backend
       currentUser = await _apiClient.updateUserType(
         token: token!,
         userType: userType,
       );
+      // Update allergies on backend
       await _apiClient.updateCurrentUserAllergies(
         token: token!,
         allergyIds: allergyIds,
       );
+      // Store notification preferences locally
+      this.notifyHighRisk = notifyHighRisk;
+      this.notifyControversial = notifyControversial;
+      // Reload fresh data
       await _loadProfileExtras();
+      selectedAllergyIds = allergyIds;
       onboardingCompleted = true;
-      */
     });
   }
 
   Future<AllergyItem> createAllergy(String name) async {
     if (!isAuthenticated) throw StateError('User is not authenticated');
     return _runBusyResult(() async {
-      // FRONTEND ONLY
-      final newId = allergies.isNotEmpty ? allergies.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1 : 1;
-      final allergy = AllergyItem(id: newId, name: name);
-      allergies = [...allergies, allergy]
-        ..sort(
-          (left, right) =>
-              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
-        );
-      notifyListeners();
-      return allergy;
-
-      /* LATER: Reconnect to backend
+      // Create allergy on backend
       final allergy = await _apiClient.createAllergy(token: token!, name: name);
       allergies = [...allergies, allergy]
         ..sort(
@@ -195,7 +185,6 @@ class AppController extends ChangeNotifier {
         );
       notifyListeners();
       return allergy;
-      */
     });
   }
 
@@ -377,8 +366,10 @@ class AppController extends ChangeNotifier {
     cumulativeSummary = null;
     lastScanPayload = const [];
     onboardingCompleted = false;
-    await _authStore.clear();
+    hasSkippedOnboarding = false;
+    selectedAllergyIds = const [];
     if (!quiet) notifyListeners();
+    await _authStore.clear();
   }
 
   Map<ProductCategory, List<ProductItem>> groupedProducts() {
@@ -431,29 +422,24 @@ class AppController extends ChangeNotifier {
 
   Future<void> _loadProfileExtras() async {
     if (!isAuthenticated) return;
-    
-    // Predefined allergies local initialization
-    if (allergies.isEmpty) {
-      allergies = const [
-        AllergyItem(id: 1, name: 'Lactose'),
-        AllergyItem(id: 2, name: 'Gluten'),
-        AllergyItem(id: 3, name: 'Arachides'),
-        AllergyItem(id: 4, name: 'Fruits de mer'),
-        AllergyItem(id: 5, name: 'Diabète'),
-        AllergyItem(id: 6, name: 'Hypertension'),
-        AllergyItem(id: 7, name: 'Cholestérol'),
-      ];
+
+    try {
+      final fetchedAllergies = await _apiClient.fetchAllergies(token!);
+      allergies = [...fetchedAllergies]
+        ..sort(
+          (left, right) =>
+              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+        );
+    } catch (_) {
     }
-    
-    // Front-end only: do not fetch from backend so we don't overwrite local additions
-    /*
-    final fetchedAllergies = await _apiClient.fetchAllergies(token!);
-    final fetchedSelectedIds = await _apiClient.fetchCurrentUserAllergyIds(
-      token!,
-    );
-    allergies = fetchedAllergies;
-    selectedAllergyIds = fetchedSelectedIds;
-    */
+
+    try {
+      final fetchedSelectedIds = await _apiClient.fetchCurrentUserAllergyIds(
+        token!,
+      );
+      selectedAllergyIds = fetchedSelectedIds;
+    } catch (_) {
+    }
   }
 
   void _syncOnboardingState({bool forceComplete = false}) {

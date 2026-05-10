@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
+import '../ui/animated_widgets.dart';
+import '../ui/transitions.dart';
 import '../ui/ui_kit.dart';
 import 'scan_result_screen.dart';
 import 'segmentation_screen.dart';
@@ -97,9 +99,9 @@ class _ScanScreenState extends State<ScanScreen> {
     List<dynamic>? result;
     try {
       result = await _runWithLoading<List<dynamic>?>(
-        'Preparation de la segmentation...',
+        'Préparation de la segmentation...',
         () => Navigator.of(context).push<List<dynamic>>(
-        MaterialPageRoute(builder: (_) => SegmentationScreen(imageFile: image)),
+          SlideUpRoute(builder: (_) => SegmentationScreen(imageFile: image)),
         ),
       );
     } catch (e) {
@@ -223,17 +225,29 @@ class _ScanHero extends StatelessWidget {
                     ),
             ),
             child: selectedImage == null
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        PulsingDot(
+                          color: AppColors.ink.withValues(alpha: 0.35),
+                          size: 14,
+                        ),
+                        const SizedBox(height: 16),
+                        const Icon(
                           Icons.camera_enhance_outlined,
                           size: 42,
                           color: AppColors.ink,
                         ),
-                        SizedBox(height: 10),
-                        Text('Prenez une photo ou importez une image pour demarrer.'),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Prenez une photo ou importez une image',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   )

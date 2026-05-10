@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import '../ui/animated_widgets.dart';
 import '../ui/ui_kit.dart';
 
 Future<void> showScanResultSheet(
@@ -171,7 +173,7 @@ class _ResultCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              RiskChip(level: riskLevel),
+              _PulsingRiskChip(level: riskLevel),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -189,17 +191,26 @@ class _ResultCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               FilledButton.icon(
-                onPressed: () => _saveWithDecision(context, result, 'approved'),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _saveWithDecision(context, result, 'approved');
+                },
                 icon: const Icon(Icons.check_circle_outline),
                 label: const Text('Ajouter'),
               ),
               FilledButton.tonalIcon(
-                onPressed: () => _saveWithDecision(context, result, 'saved'),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  _saveWithDecision(context, result, 'saved');
+                },
                 icon: const Icon(Icons.bookmark_border),
                 label: const Text('Sauvegarder'),
               ),
               OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).maybePop();
+                },
                 icon: const Icon(Icons.close),
                 label: const Text('Ne pas ajouter'),
               ),
@@ -295,12 +306,60 @@ String _recommendationFromRisk(String risk) {
 String _shortExplanation(String risk, int ingredientCount) {
   return switch (risk) {
     'CRITICAL' =>
-      'Le produit contient des signaux de risque importants. Une decision rapide est recommandee.',
-    'HIGH' => 'Des ingredients a risque eleve ont ete detectes.',
+      'Le produit contient des signaux de risque importants. Une décision rapide est recommandée.',
+    'HIGH' => 'Des ingrédients à risque élevé ont été détectés.',
     'MODERATE' =>
-      'Le produit presente des elements a surveiller selon votre profil.',
+      'Le produit présente des éléments à surveiller selon votre profil.',
     'LOW' =>
-      'Aucun signal majeur detecte avec les donnees extraites ($ingredientCount ingredients).',
-    _ => 'Le systeme a besoin de plus de donnees pour conclure precisement.',
+      'Aucun signal majeur détecté avec les données extraites ($ingredientCount ingrédients).',
+    _ => 'Le système a besoin de plus de données pour conclure précisément.',
   };
+}
+
+/// RiskChip with pulsing animation for CRITICAL and HIGH levels.
+class _PulsingRiskChip extends StatefulWidget {
+  const _PulsingRiskChip({required this.level});
+  final String level;
+
+  @override
+  State<_PulsingRiskChip> createState() => _PulsingRiskChipState();
+}
+
+class _PulsingRiskChipState extends State<_PulsingRiskChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  bool get _shouldPulse {
+    final lvl = widget.level.toUpperCase();
+    return lvl == 'CRITICAL' || lvl == 'HIGH';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    if (_shouldPulse) _ctrl.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldPulse) return RiskChip(level: widget.level);
+    return ScaleTransition(
+      scale: _scale,
+      child: RiskChip(level: widget.level),
+    );
+  }
 }

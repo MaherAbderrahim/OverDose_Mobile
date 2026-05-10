@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import '../ui/animated_widgets.dart';
 import '../ui/ui_kit.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -66,81 +67,156 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildReadView(AppUser? user, AppController controller) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 48),
       children: [
-        HighlightBanner(
-          title: 'Mon Profil',
-          subtitle: 'Consultez vos informations personnelles et votre contexte de sante.',
-          icon: Icons.person_outline_rounded,
-          colors: const [AppColors.softBlue, AppColors.softPink],
-        ),
-        const SizedBox(height: 16),
-        _ProfileHeader(user: user),
-        const SizedBox(height: 16),
-        GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SectionTitle(
-                title: 'Informations',
-                subtitle: 'Donnees principales du compte',
-              ),
-              const SizedBox(height: 16),
-              _buildInfoRow('Prenom', user?.firstName ?? '-'),
-              const SizedBox(height: 8),
-              _buildInfoRow('Nom', user?.lastName ?? '-'),
-              const SizedBox(height: 8),
-              _buildInfoRow('Email', user?.email ?? '-'),
-              const SizedBox(height: 8),
-              _buildInfoRow('Date de naissance', user?.dateOfBirth != null ? DateFormat('dd/MM/yyyy').format(user!.dateOfBirth!) : '-'),
-              const SizedBox(height: 8),
-              _buildInfoRow('Genre', _formatGender(user?.gender ?? '')),
-              const SizedBox(height: 8),
-              _buildInfoRow('Profil sante', user?.userTypeLabel ?? '-'),
-            ],
+        StaggeredFadeIn(
+          child: HighlightBanner(
+            title: 'Mon Profil',
+            subtitle: 'Informations personnelles et contexte de santé.',
+            icon: Icons.person_outline_rounded,
+            colors: const [AppColors.softBlue, AppColors.softPink],
           ),
         ),
         const SizedBox(height: 16),
-        GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SectionTitle(
-                title: 'Allergies et Notes',
-                subtitle: 'Votre contexte',
-              ),
-              const SizedBox(height: 16),
-              if (controller.selectedAllergyIds.isEmpty)
-                const Text('Aucune allergie renseignee', style: TextStyle(color: AppColors.muted))
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: controller.allergies
-                      .where((a) => controller.selectedAllergyIds.contains(a.id))
-                      .map((a) => Chip(
-                            label: Text(a.name),
-                            backgroundColor: AppColors.softBlue.withValues(alpha: 0.1),
-                            side: BorderSide.none,
-                          ))
-                      .toList(),
+        StaggeredFadeIn(
+          delay: const Duration(milliseconds: 60),
+          child: _ProfileHeader(user: user),
+        ),
+        const SizedBox(height: 16),
+        StaggeredFadeIn(
+          delay: const Duration(milliseconds: 120),
+          child: GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionTitle(
+                  title: 'Informations',
+                  subtitle: 'Données principales du compte',
                 ),
-              if (user != null && user.notes.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                const Text('Autres informations', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.ink)),
-                const SizedBox(height: 4),
-                Text(user.notes, style: const TextStyle(color: AppColors.muted)),
+                _buildInfoRow('Prénom', user?.firstName ?? '-'),
+                const SizedBox(height: 8),
+                _buildInfoRow('Nom', user?.lastName ?? '-'),
+                const SizedBox(height: 8),
+                _buildInfoRow('Email', user?.email ?? '-'),
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  'Date de naissance',
+                  user?.dateOfBirth != null
+                      ? DateFormat('dd/MM/yyyy').format(user!.dateOfBirth!)
+                      : '-',
+                ),
+                const SizedBox(height: 8),
+                _buildInfoRow('Genre', _formatGender(user?.gender ?? '')),
+                const SizedBox(height: 8),
+                _buildInfoRow('Profil santé', user?.userTypeLabel ?? '-'),
               ],
-            ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        StaggeredFadeIn(
+          delay: const Duration(milliseconds: 180),
+          child: GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionTitle(
+                  title: 'Allergies et sensibilités',
+                  subtitle: 'Votre contexte personnalisé',
+                ),
+                const SizedBox(height: 16),
+                if (controller.selectedAllergyIds.isEmpty)
+                  const Text(
+                    'Aucune allergie renseignée',
+                    style: TextStyle(color: AppColors.muted),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: controller.allergies
+                        .where((a) => controller.selectedAllergyIds.contains(a.id))
+                        .map(
+                          (a) => Chip(
+                            label: Text(a.name),
+                            backgroundColor:
+                                AppColors.softBlue.withValues(alpha: 0.1),
+                            side: BorderSide.none,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                if (user != null && user.notes.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Autres informations',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppColors.ink),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.notes,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 24),
-        FilledButton.icon(
-          onPressed: () => setState(() => _isEditing = true),
-          icon: const Icon(Icons.edit_outlined),
-          label: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('Modifier le profil'),
+        StaggeredFadeIn(
+          delay: const Duration(milliseconds: 240),
+          child: FilledButton.icon(
+            onPressed: () => setState(() => _isEditing = true),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Modifier le profil'),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        StaggeredFadeIn(
+          delay: const Duration(milliseconds: 280),
+          child: OutlinedButton.icon(
+            onPressed: controller.isBusy
+                ? null
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Se déconnecter ?'),
+                        content: const Text(
+                            'Vous devrez vous reconnecter pour accéder à vos données.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Annuler'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.danger),
+                            child: const Text('Déconnexion'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && mounted) {
+                      await controller.logout();
+                    }
+                  },
+            icon: const Icon(Icons.logout_rounded, color: AppColors.danger),
+            label: const Text(
+              'Se déconnecter',
+              style: TextStyle(color: AppColors.danger),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: AppColors.danger.withValues(alpha: 0.35),
+              ),
+            ),
           ),
         ),
       ],
@@ -474,22 +550,41 @@ class _ProfileHeader extends StatelessWidget {
 
   final AppUser? user;
 
+  String get _initials {
+    final first = user?.firstName.trim() ?? '';
+    final last = user?.lastName.trim() ?? '';
+    if (first.isEmpty && last.isEmpty) return '?';
+    final f = first.isEmpty ? '' : first[0].toUpperCase();
+    final l = last.isEmpty ? '' : last[0].toUpperCase();
+    return '$f$l';
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       child: Row(
         children: [
+          // Avatar with initials
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: AppColors.softBlue,
+              gradient: const LinearGradient(
+                colors: [AppColors.softBlue, AppColors.softPink],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
-              Icons.person_outline,
-              color: AppColors.ink,
-              size: 32,
+            child: Center(
+              child: Text(
+                _initials,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -498,17 +593,32 @@ class _ProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.displayName ?? 'Profil non connecte',
+                  user?.displayName ?? 'Profil non connecté',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(user?.email ?? 'Connectez-vous pour synchroniser les donnees'),
-                const SizedBox(height: 4),
                 Text(
-                  user?.userTypeLabel ?? 'A definir',
-                  style: const TextStyle(color: AppColors.muted),
+                  user?.email ?? 'Connectez-vous pour synchroniser vos données',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.softBlue,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    user?.userTypeLabel ?? 'À définir',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
                 ),
               ],
             ),

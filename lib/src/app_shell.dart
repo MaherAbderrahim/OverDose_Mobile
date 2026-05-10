@@ -18,14 +18,26 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
-
-  static const _titles = ['Dashboard', 'Scan', 'Mes produits', 'Profil'];
+  int _previousIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    // Guard: only refreshSession if still authenticated to avoid race condition
+    // when a logout happens right before the frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppController>().refreshSession();
+      final ctrl = context.read<AppController>();
+      if (ctrl.isAuthenticated) {
+        ctrl.refreshSession();
+      }
+    });
+  }
+
+  void _onTabSelected(int value) {
+    if (value == _index) return;
+    setState(() {
+      _previousIndex = _index;
+      _index = value;
     });
   }
 
@@ -39,23 +51,26 @@ class _AppShellState extends State<AppShell> {
     ];
 
     return _AppShellScope(
-      goToTab: (value) => setState(() => _index = value),
+      goToTab: _onTabSelected,
       child: Scaffold(
         extendBody: true,
-        appBar: AppBar(
-          title: Text(_titles[_index]),
-          actions: [
-            IconButton(
-              onPressed: () => context.read<AppController>().logout(),
-              icon: const Icon(Icons.logout),
-              tooltip: 'Deconnexion',
-            ),
-          ],
-        ),
+        // No global AppBar — each screen owns its header for immersive design
         body: Container(
           decoration: buildPageBackground(),
           child: SafeArea(
-            child: IndexedStack(index: _index, children: pages),
+            bottom: false,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: KeyedSubtree(
+                key: ValueKey(_index),
+                child: pages[_index],
+              ),
+            ),
           ),
         ),
         bottomNavigationBar: SafeArea(
@@ -65,8 +80,8 @@ class _AppShellState extends State<AppShell> {
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.ink.withValues(alpha: 0.05),
-                  blurRadius: 32,
+                  color: AppColors.ink.withValues(alpha: 0.06),
+                  blurRadius: 36,
                   offset: const Offset(0, 12),
                 ),
               ],
@@ -74,22 +89,23 @@ class _AppShellState extends State<AppShell> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(28),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18.0, sigmaY: 18.0),
+                filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: Colors.white.withValues(alpha: 0.75),
                       width: 1.2,
                     ),
                   ),
                   child: NavigationBar(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
-                    height: 72,
+                    height: 70,
                     selectedIndex: _index,
-                    onDestinationSelected: (value) => setState(() => _index = value),
+                    onDestinationSelected: _onTabSelected,
+                    animationDuration: const Duration(milliseconds: 300),
                     destinations: const [
                       NavigationDestination(
                         icon: Icon(Icons.dashboard_outlined),
@@ -97,8 +113,8 @@ class _AppShellState extends State<AppShell> {
                         label: 'Dashboard',
                       ),
                       NavigationDestination(
-                        icon: Icon(Icons.camera_alt_outlined),
-                        selectedIcon: Icon(Icons.camera_alt),
+                        icon: Icon(Icons.center_focus_strong_outlined),
+                        selectedIcon: Icon(Icons.center_focus_strong),
                         label: 'Scan',
                       ),
                       NavigationDestination(

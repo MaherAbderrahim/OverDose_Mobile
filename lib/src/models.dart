@@ -269,11 +269,13 @@ class CumulativeSummary {
     return CumulativeSummary(raw: json);
   }
 
+  // ─── Global summary sub-object ─────────────────────────────────────────────
   Map<String, dynamic> get globalSummary {
     final value = raw['global_summary'];
     return value is Map ? Map<String, dynamic>.from(value) : const {};
   }
 
+  // ─── Product verdicts ──────────────────────────────────────────────────────
   List<Map<String, dynamic>> get productVerdicts {
     final value = raw['product_verdicts'];
     if (value is! List) return const [];
@@ -294,6 +296,55 @@ class CumulativeSummary {
         .toList();
   }
 
+  // ─── Organs & chemicals (from global_summary) ──────────────────────────────
+  List<String> get organsUnderPressure {
+    final val = globalSummary['organs_under_pressure'];
+    if (val is List) return val.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  List<String> get criticalChemicals {
+    final val = globalSummary['critical_chemicals'];
+    if (val is List) return val.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  List<String> get highChemicals {
+    final val = globalSummary['high_chemicals'];
+    if (val is List) return val.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  int get productsSafe =>
+      (globalSummary['products_safe'] as num?)?.toInt() ?? 0;
+
+  // ─── Safe & unverified ingredients ────────────────────────────────────────
+  List<String> get safeIngredients {
+    final val = raw['safe_ingredients'];
+    if (val is List) return val.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  List<String> get unverifiedChemicals {
+    final val = raw['unverified_chemicals'];
+    if (val is List) return val.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  // ─── Verdict recommendations (product_verdicts enriched) ──────────────────
+  /// Returns verdicts sorted by risk: eliminate first, then reduce, then keep.
+  List<Map<String, dynamic>> get sortedVerdicts {
+    final order = {'eliminate': 0, 'reduce': 1, 'keep': 2};
+    final sorted = [...productVerdicts];
+    sorted.sort((a, b) {
+      final aRec = order[a['recommendation']?.toString()] ?? 3;
+      final bRec = order[b['recommendation']?.toString()] ?? 3;
+      return aRec.compareTo(bRec);
+    });
+    return sorted;
+  }
+
+  // ─── Key warnings (for dashboard highlight) ────────────────────────────────
   List<String> get keyWarnings {
     final warnings = <String>{};
     final overall = raw['overall_assessment'];
@@ -321,10 +372,10 @@ class CumulativeSummary {
       return value.trim();
     }
     if (productsToAvoid > 0) {
-      return 'Plusieurs produits meritent d etre evites selon votre profil.';
+      return 'Plusieurs produits méritent d\'être évités selon votre profil.';
     }
     if (productsToReduce > 0) {
-      return 'Certains produits sont a reduire pour limiter les risques cumules.';
+      return 'Certains produits sont à réduire pour limiter les risques cumulés.';
     }
     return 'Votre vue cumulative reste globalement stable pour le moment.';
   }
@@ -346,6 +397,21 @@ class CumulativeSummary {
   }).length;
 
   bool get hasData => raw.isNotEmpty;
+
+  /// Overall health score 0–100 derived from available signals.
+  int get healthScore {
+    if (!hasData) return 50;
+    final total = productCount;
+    if (total == 0) return 50;
+    final safe = productsSafe.clamp(0, total);
+    final avoid = productsToAvoid.clamp(0, total);
+    final reduce = productsToReduce.clamp(0, total);
+    // Base: safe/total weighted, penalized by avoid and reduce
+    final raw = ((safe / total) * 100) -
+        ((avoid / total) * 40) -
+        ((reduce / total) * 20);
+    return raw.round().clamp(5, 98);
+  }
 }
 
 @immutable

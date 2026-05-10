@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import '../ui/animated_widgets.dart';
+import '../ui/transitions.dart';
 import '../ui/ui_kit.dart';
 import 'recommendations_list_screen.dart';
 
@@ -160,108 +163,114 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: product.category == ProductCategory.food
-                      ? const Color(0xFFFFE7D6)
-                      : AppColors.softBlue,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(
-                  product.category == ProductCategory.food
-                      ? Icons.restaurant_outlined
-                      : Icons.spa_outlined,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.displayTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${product.category.label} • ${product.extractionLabel}',
-                      style: const TextStyle(color: AppColors.muted),
-                    ),
-                  ],
-                ),
-              ),
-              RiskChip(level: product.riskLevel),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              DecisionChip(label: product.decisionLabel, active: true),
-              if (product.updatedAt != null)
-                Chip(
-                  label: Text(
-                    'Maj ${product.updatedAt!.day}/${product.updatedAt!.month}',
+    return PressScale(
+      child: GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: product.category == ProductCategory.food
+                        ? const Color(0xFFFFE7D6)
+                        : AppColors.softBlue,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(
+                    product.category == ProductCategory.food
+                        ? Icons.restaurant_outlined
+                        : Icons.spa_outlined,
+                    color: AppColors.ink,
                   ),
                 ),
-            ],
-          ),
-          if (product.ingredients.isNotEmpty) ...[
-            const SizedBox(height: 12),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.displayTitle,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${product.category.label} • ${product.extractionLabel}',
+                        style: const TextStyle(color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                RiskChip(level: product.riskLevel),
+              ],
+            ),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: product.ingredients
-                  .take(5)
-                  .map((ingredient) => Chip(label: Text(ingredient)))
-                  .toList(),
+              children: [
+                DecisionChip(label: product.decisionLabel, active: true),
+                if (product.updatedAt != null)
+                  Chip(
+                    label: Text(
+                      'Maj ${DateFormat('dd MMM').format(product.updatedAt!)}',
+                    ),
+                  ),
+              ],
             ),
-          ],
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonal(
-                  onPressed: () => _openDecisionSheet(context),
-                  child: const Text('Decision'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: product.isHighRisk
-                      ? () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  RecommendationsListScreen(product: product),
-                            ),
-                          );
-                        }
-                      : null,
-                  child: const Text('Alternatives'),
-                ),
+            if (product.ingredients.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: product.ingredients
+                    .take(5)
+                    .map((ingredient) => Chip(label: Text(ingredient)))
+                    .toList(),
               ),
             ],
-          ),
-          if (product.userDecisionNotes.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              product.userDecisionNotes,
-              style: const TextStyle(color: AppColors.muted),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: () => _openDecisionSheet(context),
+                    child: const Text('Decision'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: product.isHighRisk
+                        ? () {
+                            Navigator.of(context).push(
+                              SlideRightRoute(
+                                builder: (_) => RecommendationsListScreen(
+                                  product: product,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    child: const Text('Alternatives'),
+                  ),
+                ),
+              ],
             ),
+            if (product.userDecisionNotes.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                product.userDecisionNotes,
+                style: const TextStyle(color: AppColors.muted),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
